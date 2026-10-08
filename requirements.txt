@@ -1,0 +1,19 @@
+# 基础依赖
+PyQt6>=6.6
+python-vlc>=3.0.18122
+
+# 凭据加密（密钥存于 OS 凭据库，不落明文）
+cryptography>=42.0
+keyring>=24.0
+
+# ONVIF 设备管理与 PTZ
+onvif-zeep>=0.1.0
+
+# 可选：WS-Discovery 若不想用手写探测可启用（本项目已内置手写实现，可不装）
+# wsdiscovery>=0.8.0
+
+# 设备原生巡航轨迹（厂商 SDK）为可选能力：
+# 海康 HCNetSDK / 大华 dhnetsdk 是 C 动态库，需用户自行部署到运行环境
+# （Windows 放 HCNetSDK.dll / dhnetsdk.dll 到 PATH，Linux 放 .so 到 LD_LIBRARY_PATH），
+# 不属于 pip 依赖。未部署时自动回退 ONVIF 预置位轮巡，功能可用。
+# 可选：若希望用 OpenCV 做更精确的移动侦测帧差，可加 opencv-python>=4.9

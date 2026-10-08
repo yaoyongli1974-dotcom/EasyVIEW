@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=IVMS4200-Lite
+GenericName=Video Surveillance Client
+Comment=Lightweight IVMS-4200-like RTSP video preview client
+Exec=/opt/ivms4200-lite/IVMS4200-Lite
+Icon=ivms4200-lite
+Terminal=false
+Categories=AudioVideo;Video;Network;Monitor;
+Keywords=surveillance;camera;RTSP;ONVIF;preview;
+StartupNotify=true

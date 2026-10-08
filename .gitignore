@@ -1,0 +1,48 @@
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*.pyc
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+
+# ===== 构建产物（PyInstaller onedir / 工作目录）=====
+dist/
+dist_*/
+build/build/
+*.pyz
+*.pkg
+*.spec
+
+# ===== 下载/打包用的超大二进制（VLC 运行库、NSIS 安装器）=====
+_nsis/
+_nsis.zip
+_vlc*
+*.7z
+*.exe
+
+# ===== 本地数据（含设备凭据库与运行日志，禁止入库）=====
+data/
+*.db
+*.sqlite
+*.sqlite3
+*.log
+ivms_debug.log
+
+# ===== 测试/预览截图产物 =====
+preview_separators_*.png
+_v4_*.png
+_v5_*.png
+
+# ===== 系统 / 编辑器 =====
+.DS_Store
+Thumbs.db
+*.swp
+*~
+Desktop.ini
+
+# ===== WorkBuddy 本地数据 =====
+.workbuddy/

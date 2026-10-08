@@ -1,0 +1,5 @@
+#!/bin/sh
+# Pre-remove: nothing special; data dir (~/.local/share/IVMS4200-Lite) is
+# preserved intentionally so user cameras/recordings survive reinstall.
+set -e
+exit 0
