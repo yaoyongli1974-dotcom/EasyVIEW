@@ -93,10 +93,13 @@ jobs:
       - name: Build installer (Setup.exe)
         shell: pwsh
         run: |
-          & "C:\Program Files (x86)\NSIS\makensis.exe" build/installer.nsi
+          $root = (Get-Location).Path
+          & "C:\Program Files (x86)\NSIS\makensis.exe" "/DDISTDIR=$root\dist" build/installer.nsi
           $v = (Select-String -Path core/config.py -Pattern 'APP_VERSION = "(.+)"').Matches.Groups[1].Value
-          if (Test-Path dist/EasyVIEW-Setup.exe) {
-            Move-Item dist/EasyVIEW-Setup.exe "dist/EasyVIEW-$v-Setup.exe" -Force
+          if (Test-Path "dist/EasyVIEW-Setup.exe") {
+            Move-Item "dist/EasyVIEW-Setup.exe" "dist/EasyVIEW-$v-Setup.exe" -Force
+          } else {
+            throw "Setup.exe not produced"
           }
 
       - name: Show artifacts

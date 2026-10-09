@@ -8,9 +8,13 @@
 !define APPVERSION "0.1.1"
 !define PUBLISHER "EasyVIEW"
 
+; 产物目录：CI 传入绝对路径 /DDISTDIR=...；本地默认相对脚本目录（build/）的 ../dist
+!ifndef DISTDIR
+  !define DISTDIR "..\dist"
+!endif
+
 Name "${APPNAME} ${APPVERSION}"
-; __FILEDIR__ = build/；项目根在上一级，与运行目录无关
-OutFile "${__FILEDIR__}\..\dist\EasyVIEW-Setup.exe"
+OutFile "${DISTDIR}\EasyVIEW-Setup.exe"
 InstallDir "$PROGRAMFILES64\${APPNAME}"
 RequestExecutionLevel admin
 
@@ -25,7 +29,7 @@ RequestExecutionLevel admin
 Section "Main" SEC_MAIN
   SetOutPath "$INSTDIR"
   ; dist\EasyVIEW\* already contains PyInstaller output and (optional) vlc\ runtime
-  File /r "${__FILEDIR__}\..\dist\EasyVIEW"
+  File /r "${DISTDIR}\EasyVIEW"
 
   CreateDirectory "$SMPROGRAMS\${APPNAME}"
   CreateShortcut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" "$INSTDIR\${APPNAME}.exe"
