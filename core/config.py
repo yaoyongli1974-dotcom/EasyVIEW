@@ -18,7 +18,7 @@ import json
 from pathlib import Path
 
 APP_NAME = "EasyVIEW"
-APP_VERSION = "1.0.0"
+APP_VERSION = "0.1.1"
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 

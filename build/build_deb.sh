@@ -3,7 +3,7 @@
 # 由 PyInstaller onedir 包生成 Debian/Ubuntu (.deb) 安装包。
 # 前置：dpkg-deb（build-essential 或 dpkg-dev）
 # 用法：bash build/build_deb.sh
-# 产物：dist/easyview_1.0.0_amd64.deb
+# 产物：dist/easyview_0.1.1_amd64.deb
 # ==============================================================================
 set -euo pipefail
 
@@ -11,7 +11,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 APP_NAME="easyview"
-VERSION="1.0.0"
+BIN_NAME="EasyVIEW"
+VERSION="0.1.1"
 ARCH="amd64"
 
 BUNDLE="$ROOT/dist/EasyVIEW"
@@ -32,7 +33,7 @@ echo "==> 复制 PyInstaller 包到 /opt/$APP_NAME"
 cp -r "$BUNDLE/." "$STAGE/opt/$APP_NAME/"
 
 echo "==> 创建 /usr/bin 软链接"
-ln -s "/opt/$APP_NAME/$APP_NAME" "$STAGE/usr/bin/$APP_NAME"
+ln -s "/opt/$APP_NAME/$BIN_NAME" "$STAGE/usr/bin/$APP_NAME"
 
 echo "==> 安装桌面入口与图标"
 cp "$ROOT/packaging/easyview.desktop" "$STAGE/usr/share/applications/$APP_NAME.desktop"
@@ -43,7 +44,7 @@ cp "$ROOT/packaging/deb/DEBIAN/control" "$STAGE/DEBIAN/control"
 cp "$ROOT/packaging/deb/DEBIAN/postinst" "$STAGE/DEBIAN/postinst"
 cp "$ROOT/packaging/deb/DEBIAN/prerm" "$STAGE/DEBIAN/prerm"
 chmod 0755 "$STAGE/DEBIAN/postinst" "$STAGE/DEBIAN/prerm"
-chmod 0755 "$STAGE/opt/$APP_NAME/$APP_NAME"
+chmod 0755 "$STAGE/opt/$APP_NAME/$BIN_NAME"
 
 OUT="$ROOT/dist/${APP_NAME}_${VERSION}_${ARCH}.deb"
 echo "==> 构建 $OUT"

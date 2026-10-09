@@ -1,0 +1,130 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    name: Build Linux packages
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libvlc5 libvlc-dev rpm dpkg-dev patchelf binutils
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Build PyInstaller onedir bundle
+        run: python -m PyInstaller build/build.spec --noconfirm --clean --workpath build_pyi
+
+      - name: Build deb / rpm / AppImage / source
+        run: |
+          bash build/build_deb.sh
+          bash build/build_rpm.sh
+          bash build/build_appimage.sh
+          bash build/build_source.sh
+
+      - name: Show artifacts
+        run: ls -lh dist/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-dist
+          if-no-files-found: error
+          path: |
+            dist/*.deb
+            dist/*.rpm
+            dist/*.AppImage
+            dist/*-src.tar.gz
+
+  windows:
+    name: Build Windows packages
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install -U pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Build PyInstaller onedir bundle
+        run: python -m PyInstaller build/build.spec --noconfirm --clean --workpath build_pyi
+
+      - name: Bundle VLC runtime (portable)
+        shell: pwsh
+        run: |
+          $url = "https://get.videolan.org/vlc/3.0.21/win64/vlc-3.0.21-win64.zip"
+          Invoke-WebRequest -Uri $url -OutFile vlc.zip
+          Expand-Archive vlc.zip -DestinationPath vlc-tmp
+          New-Item -ItemType Directory -Force -Path dist/EasyVIEW/vlc | Out-Null
+          Copy-Item -Recurse -Force vlc-tmp/vlc-3.0.21/* dist/EasyVIEW/vlc/
+
+      - name: Make portable zip
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path core/config.py -Pattern 'APP_VERSION = "(.+)"').Matches.Groups[1].Value
+          Compress-Archive -Path dist/EasyVIEW -DestinationPath "dist/EasyVIEW-$v-win64-portable.zip"
+
+      - name: Install NSIS
+        run: choco install nsis --no-progress -y
+
+      - name: Build installer (Setup.exe)
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\NSIS\makensis.exe" build/installer.nsi
+          $v = (Select-String -Path core/config.py -Pattern 'APP_VERSION = "(.+)"').Matches.Groups[1].Value
+          if (Test-Path dist/EasyVIEW-Setup.exe) {
+            Move-Item dist/EasyVIEW-Setup.exe "dist/EasyVIEW-$v-Setup.exe" -Force
+          }
+
+      - name: Show artifacts
+        run: Get-ChildItem dist
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-dist
+          if-no-files-found: error
+          path: |
+            dist/*-portable.zip
+            dist/*-Setup.exe
+
+  release:
+    name: Publish GitHub Release
+    needs: [linux, windows]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: List release assets
+        run: find artifacts -type f
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: EasyVIEW ${{ github.ref_name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: false
+          files: artifacts/*/*

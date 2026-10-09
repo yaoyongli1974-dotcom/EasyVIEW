@@ -3,7 +3,7 @@
 # 由 PyInstaller onedir 包生成 AppImage（单文件、跨发行版可直接运行）。
 # 前置：appimagetool（AppImageKit）。脚本会自动下载到 build/ 目录（若未找到）。
 # 用法：bash build/build_appimage.sh
-# 产物：dist/EasyVIEW-1.0.0-x86_64.AppImage
+# 产物：dist/EasyVIEW-0.1.1-x86_64.AppImage
 # ==============================================================================
 set -euo pipefail
 
@@ -11,7 +11,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 APP_NAME="easyview"
-VERSION="1.0.0"
+BIN_NAME="EasyVIEW"
+VERSION="0.1.1"
 ARCH="x86_64"
 
 BUNDLE="$ROOT/dist/EasyVIEW"
@@ -44,7 +45,7 @@ cat > "$APPDIR/AppRun" <<EOF
 #!/bin/sh
 HERE="\$(dirname "\$(readlink -f "\$0")")"
 export LD_LIBRARY_PATH="\$HERE/usr/lib/$APP_NAME:\$LD_LIBRARY_PATH"
-exec "\$HERE/usr/lib/$APP_NAME/$APP_NAME" "\$@"
+exec "\$HERE/usr/lib/$APP_NAME/$BIN_NAME" "\$@"
 EOF
 chmod +x "$APPDIR/AppRun"
 
@@ -54,12 +55,12 @@ cat > "$APPDIR/$APP_NAME.desktop" <<EOF
 Type=Application
 Name=EasyVIEW
 GenericName=Video Surveillance Client
-Comment=Lightweight IVMS-4200-like RTSP video preview client
+Comment=Minimal RTSP / HTTP-HLS video preview client
 Exec=$APP_NAME
 Icon=$APP_NAME
 Terminal=false
 Categories=AudioVideo;Video;Network;Monitor;
-Keywords=surveillance;camera;RTSP;ONVIF;preview;
+Keywords=surveillance;camera;RTSP;preview;
 StartupNotify=true
 EOF
 cp "$APPDIR/$APP_NAME.desktop" "$APPDIR/usr/share/applications/$APP_NAME.desktop"
@@ -68,7 +69,8 @@ cp "$ROOT/packaging/icon.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/$APP
 
 echo "==> 生成 AppImage"
 OUT="$ROOT/dist/$APP_NAME-$VERSION-$ARCH.AppImage"
-"$APPIMAGETOOL" "$APPDIR" "$OUT"
+# CI 无 FUSE 时用 extract-and-run 方式执行 appimagetool
+APPIMAGE_EXTRACT_AND_RUN=1 "$APPIMAGETOOL" "$APPDIR" "$OUT"
 
 echo "==> 完成：$OUT"
 ls -lh "$OUT"

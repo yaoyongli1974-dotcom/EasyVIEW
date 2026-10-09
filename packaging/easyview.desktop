@@ -2,10 +2,10 @@
 Type=Application
 Name=EasyVIEW
 GenericName=Video Surveillance Client
-Comment=Lightweight IVMS-4200-like RTSP video preview client
+Comment=Minimal RTSP / HTTP-HLS video preview client
 Exec=/opt/easyview/EasyVIEW
 Icon=easyview
 Terminal=false
 Categories=AudioVideo;Video;Network;Monitor;
-Keywords=surveillance;camera;RTSP;ONVIF;preview;
+Keywords=surveillance;camera;RTSP;preview;
 StartupNotify=true

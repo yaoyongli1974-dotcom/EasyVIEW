@@ -13,9 +13,19 @@ env/
 dist/
 dist_*/
 build/build/
+build_pyi/
+out/
 *.pyz
 *.pkg
 *.spec
+# 但保留仓库内的 PyInstaller 规格文件
+!build/*.spec
+
+# ===== 打包中间产物 =====
+build/AppDir/
+build/deb_stage/
+build/appimagetool
+build/*.AppImage
 
 # ===== 下载/打包用的超大二进制（VLC 运行库、NSIS 安装器）=====
 _nsis/

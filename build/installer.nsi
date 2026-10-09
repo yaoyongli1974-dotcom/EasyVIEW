@@ -5,11 +5,12 @@
 ; Output : dist\EasyVIEW-Setup.exe
 ; ============================================================
 !define APPNAME "EasyVIEW"
-!define APPVERSION "1.0.0"
+!define APPVERSION "0.1.1"
 !define PUBLISHER "EasyVIEW"
 
 Name "${APPNAME} ${APPVERSION}"
-OutFile "..\dist\EasyVIEW-Setup.exe"
+; __FILEDIR__ = build/；项目根在上一级，与运行目录无关
+OutFile "${__FILEDIR__}\..\dist\EasyVIEW-Setup.exe"
 InstallDir "$PROGRAMFILES64\${APPNAME}"
 RequestExecutionLevel admin
 
@@ -24,7 +25,7 @@ RequestExecutionLevel admin
 Section "Main" SEC_MAIN
   SetOutPath "$INSTDIR"
   ; dist\EasyVIEW\* already contains PyInstaller output and (optional) vlc\ runtime
-  File /r "..\dist\EasyVIEW"
+  File /r "${__FILEDIR__}\..\dist\EasyVIEW"
 
   CreateDirectory "$SMPROGRAMS\${APPNAME}"
   CreateShortcut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" "$INSTDIR\${APPNAME}.exe"

@@ -22,7 +22,7 @@ from PyQt6.QtWidgets import (
 )
 
 from core.camera import Camera, add_camera, delete_camera, test_connection, update_camera
-from core.config import MAX_CHANNELS, VLC_ARGS
+from core.config import APP_VERSION, MAX_CHANNELS, VLC_ARGS
 # 必须在 import vlc 之前完成 VLC 运行时路径注入（core.config 在导入时执行 _inject_vlc_path）
 import vlc
 from ui.camera_dialog import CameraDialog
@@ -34,7 +34,7 @@ from ui.video_grid import VideoGrid
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("EasyVIEW  视频预览客户端")
+        self.setWindowTitle(f"EasyVIEW  视频预览客户端  v{APP_VERSION}")
         self.resize(1360, 860)
 
         # 全局共享一个 LibVLC 实例（所有 MediaPlayer 共用）
