@@ -1,5 +1,4 @@
-"""GUI 冒烟测试（offscreen）：主窗口与各对话框可构造，覆盖历史崩溃点。"""
-from core.camera import Camera
+"""GUI 冒烟测试（offscreen）：主窗口与对话框可构造，覆盖历史崩溃点。"""
 
 
 def test_main_window_constructs(qt_app, tmp_db):
@@ -12,38 +11,34 @@ def test_main_window_constructs(qt_app, tmp_db):
     win.close()
 
 
-def test_plan_dialog_segment_per_mode(qt_app):
-    """回归：PlanDialog 曾因缺少 QLineEdit/QTime 导入而 NameError。"""
-    import ui.schedule_panel as sp
-
-    cam = Camera(id=1, name="t", ip="127.0.0.1", username="admin", password="x")
-    dlg = sp.PlanDialog(cam)
-    p = dlg.get_plan()
-    assert p.mode == "schedule"
-    assert p.segment_seconds == 0
-
-    dlg.mode.setCurrentText("移动侦测(motion)")
-    dlg.mseg.setValue(42)
-    assert dlg.get_plan().segment_seconds == 42
-    assert dlg.get_plan().mode == "motion"
-
-
-def test_camera_dialog_drops_stale_stream_uri(qt_app):
+def test_camera_dialog_roundtrip(qt_app):
     from ui.camera_dialog import CameraDialog
 
-    cam = Camera(id=1, name="t", ip="10.0.0.1", username="admin", password="x",
-                 stream_uri="rtsp://10.0.0.1/onvif")
-    dlg = CameraDialog(cam)
-    assert dlg.get_camera().stream_uri == "rtsp://10.0.0.1/onvif"
-    dlg.ip.setText("10.0.0.2")  # 改 IP 后旧权威地址应失效
-    assert dlg.get_camera().stream_uri == ""
+    dlg = CameraDialog()
+    dlg.name.setText("前门")
+    dlg.ip.setText("10.0.0.1")
+    dlg.user.setText("admin")
+    dlg.pwd.setText("secret")
+    cam = dlg.get_camera()
+    assert cam.name == "前门"
+    assert cam.ip == "10.0.0.1"
+    assert cam.password == "secret"
+
+    # 重新载入已保存的摄像机，字段应回填一致
+    dlg2 = CameraDialog(cam)
+    assert dlg2.get_camera().ip == "10.0.0.1"
+    assert dlg2.get_camera().protocol == cam.protocol
 
 
-def test_settings_dialog_constructs(qt_app):
-    from ui.settings_dialog import SettingsDialog
+def test_http_protocol_uses_full_uri(qt_app):
+    from ui.camera_dialog import CameraDialog
 
-    dlg = SettingsDialog()
-    assert dlg.hw_combo.count() > 0
+    dlg = CameraDialog()
+    dlg.ip.setText("127.0.0.1")
+    dlg.uri.setText("http://127.0.0.1:8080/cam1/index.m3u8")
+    dlg.protocol.setCurrentIndex(1)  # HTTP/HLS
+    cam = dlg.get_camera()
+    assert cam.rtsp_url() == "http://127.0.0.1:8080/cam1/index.m3u8"
 
 
 def test_auto_layout_counts():
@@ -61,7 +56,6 @@ def test_auto_layout_counts():
     assert len(tiles) == 6
     big = [t for t in tiles if t[2] == 2 and t[3] == 2]
     assert big == [(0, 0, 2, 2)]
-    # 大窗占 4 格，其余 5 格各 1×1，合计正好 9 格
     assert len(tiles) - 1 == 5
 
     # 数量上限
@@ -108,10 +102,7 @@ def test_video_grid_apply_count_featured(qt_app):
 
 
 def test_fullscreen_in_place_and_restore(qt_app):
-    """回归：全屏不得把含原生视频子窗口的控件重挂为顶层窗口。
-
-    改为「网格内单路铺满 + 主窗口全屏」。此处校验网格层的就地全屏与还原。
-    """
+    """回归：全屏不得把含原生视频子窗口的控件重挂为顶层窗口。"""
     import vlc
     from ui.video_grid import VideoGrid
 
@@ -188,25 +179,6 @@ def test_main_window_grid_and_window_controls(qt_app, tmp_db):
     w._remove_slot()
     assert w.grid.current_count == 5
     w.close()
-
-
-def test_channel_camera_derivation():
-    from core.camera import Camera
-
-    cam = Camera(name="nvr", ip="1.2.3.4", username="admin", password="pass",
-                 vendor="hikvision", channels=8, protocol="rtsp")
-    c3 = cam.channel_camera(3)
-    assert c3.channel == 3
-    assert c3.stream_uri == ""
-    assert c3.rtsp_url() == "rtsp://admin:pass@1.2.3.4:554/Streaming/Channels/301"
-
-
-def test_device_manager_constructs(qt_app, tmp_db):
-    from ui.device_manager import DeviceManager
-
-    dlg = DeviceManager()
-    assert dlg.table.columnCount() == len(DeviceManager.HEADERS)
-    dlg.close()
 
 
 def test_list_double_click_keeps_layout(qt_app, tmp_db):

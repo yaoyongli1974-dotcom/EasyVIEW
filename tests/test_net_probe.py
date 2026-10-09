@@ -2,8 +2,6 @@
 import socket
 import threading
 
-import pytest
-
 
 def _serve(responses):
     """起一个本地 TCP 服务端，按顺序对每次请求返回一个响应；返回端口。"""

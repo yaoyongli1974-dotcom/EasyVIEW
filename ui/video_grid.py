@@ -27,8 +27,6 @@ SEP_THICK = 2
 
 
 class VideoGrid(QWidget):
-    # 某路预览请求「浮出为独立窗口」（由预览控件右键菜单触发）
-    floatRequested = pyqtSignal(object)
     # 请求进入某路全屏 / 退出全屏（窗口级全屏由 MainWindow 负责）
     fullscreenRequested = pyqtSignal(object)
     fullscreenExitRequested = pyqtSignal()
@@ -47,7 +45,6 @@ class VideoGrid(QWidget):
             w.dragSwapRequested.connect(self.on_drag_swap)
             w.escapeRequested.connect(self.on_escape)
             w.clearRequested.connect(self.on_clear)
-            w.floatRequested.connect(self.floatRequested)
             self.widgets.append(w)
 
         self.grid = QGridLayout(self)

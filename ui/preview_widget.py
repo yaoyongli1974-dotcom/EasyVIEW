@@ -14,7 +14,7 @@ import sys
 import time
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, QEvent, QTimer, QUrl, pyqtSignal
+from PyQt6.QtCore import Qt, QEvent, QTimer, pyqtSignal
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import QFrame, QLabel, QMenu, QSizePolicy, QVBoxLayout, QWidget
 
@@ -31,7 +31,6 @@ class PreviewWidget(QWidget):
     clearRequested = pyqtSignal(object)     # 右键 -> 清空该窗口（停止并解除设备）
     dragSwapRequested = pyqtSignal(object)  # 拖拽到其他窗口 -> 请求交换画面
     escapeRequested = pyqtSignal(object)    # 全屏下按 ESC -> 请求退出全屏
-    floatRequested = pyqtSignal(object)     # 右键菜单 -> 浮出为独立窗口
 
     def __init__(self, vlc_instance: vlc.Instance, channel_index: int = 0):
         super().__init__()
@@ -203,23 +202,6 @@ class PreviewWidget(QWidget):
         if self.player:
             self.player.stop()
 
-    def play_file(self, path: str):
-        self.camera = None
-        self.overlay.hide()
-        self._show_playing_layers()
-        if self.player is None:
-            self.player = self.instance.media_player_new()
-            win_id = int(self.video_frame.winId())
-            if sys.platform.startswith("win"):
-                self.player.set_hwnd(win_id)
-            else:
-                self.player.set_xwindow(win_id)
-        # 跨平台本地文件 URL（Windows 下 "file:///C:\..." 无效，须用 QUrl 规范化）
-        media = self.instance.media_new(QUrl.fromLocalFile(path).toString())
-        media.add_option("network-caching=300")
-        self.player.set_media(media)
-        self.player.play()
-
     def is_playing(self) -> bool:
         return bool(self.player and self.player.is_playing())
 
@@ -248,15 +230,6 @@ class PreviewWidget(QWidget):
         except Exception:
             pass
 
-    # ---------- 截图抓拍 ----------
-    def take_snapshot(self, path: str) -> bool:
-        if self.player is None or not self.player.is_playing():
-            return False
-        try:
-            return bool(self.player.video_take_snapshot(0, path, 0, 0))
-        except Exception:
-            return False
-
     # ---------- 画面比例 ----------
     def _apply_aspect(self, media):
         if self._aspect and self._aspect != "auto":
@@ -273,7 +246,6 @@ class PreviewWidget(QWidget):
     def _show_context_menu(self, global_pos):
         menu = QMenu(self)
         if self.camera is not None:
-            menu.addAction("浮出为独立窗口", lambda: self.floatRequested.emit(self))
             menu.addAction("清空窗口", lambda: self.clearRequested.emit(self))
             menu.addSeparator()
             ratio = menu.addMenu("画面比例")

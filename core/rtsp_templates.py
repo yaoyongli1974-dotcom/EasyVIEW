@@ -2,7 +2,17 @@
 from urllib.parse import quote
 
 from core.camera import Camera
-from core.onvif_discovery import ONVIF_MANUFACTURERS  # 厂商名 -> 模板 key 映射
+
+# 厂商名关键字 -> 模板 key（用于按设备返回的厂商名模糊匹配）
+VENDOR_ALIASES = {
+    "hikvision": "hikvision",
+    "dahua": "dahua",
+    "uniview": "uniview",
+    "imou": "imou",
+    "axis": "onvif",
+    "tiandy": "onvif",
+    "hanbang": "onvif",
+}
 
 # 模板以 lambda 接收 {'channel':int,'stream_type':'main'|'sub'} 返回路径部分
 TEMPLATES = {
@@ -52,7 +62,7 @@ def build_rtsp(
 
 
 def camera_rtsp_url(cam: Camera) -> str:
-    """Camera 统一入口：优先 ONVIF 权威地址；HTTP/HLS 协议直接用完整 URL。"""
+    """Camera 统一入口：HTTP/HLS 直接用完整 URL；否则优先完整流地址，末选厂商模板。"""
     protocol = (getattr(cam, "protocol", "rtsp") or "rtsp").lower()
     if protocol == "http":
         # HTTP/HLS/MJPEG：必须使用完整 stream_uri（含协议头）
@@ -72,7 +82,7 @@ def match_vendor(manufacturer: str) -> str:
     if not manufacturer:
         return "onvif"
     m = manufacturer.lower()
-    for name, key in ONVIF_MANUFACTURERS.items():
+    for name, key in VENDOR_ALIASES.items():
         if name.lower() in m:
             return key
     return "onvif"
