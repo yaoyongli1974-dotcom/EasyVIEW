@@ -71,14 +71,15 @@ jobs:
       - name: Build PyInstaller onedir bundle
         run: python -m PyInstaller build/build.spec --noconfirm --clean --workpath build_pyi
 
-      - name: Bundle VLC runtime (portable)
+      - name: Install VLC and bundle runtime (portable)
         shell: pwsh
         run: |
-          $url = "https://get.videolan.org/vlc/3.0.21/win64/vlc-3.0.21-win64.zip"
-          Invoke-WebRequest -Uri $url -OutFile vlc.zip
-          Expand-Archive vlc.zip -DestinationPath vlc-tmp
+          $ProgressPreference = 'SilentlyContinue'
+          choco install vlc --no-progress -y
+          $vlc = "C:\Program Files\VideoLAN\VLC"
+          if (-not (Test-Path "$vlc\libvlc.dll")) { throw "VLC runtime not found at $vlc" }
           New-Item -ItemType Directory -Force -Path dist/EasyVIEW/vlc | Out-Null
-          Copy-Item -Recurse -Force vlc-tmp/vlc-3.0.21/* dist/EasyVIEW/vlc/
+          Copy-Item -Recurse -Force "$vlc\*" dist/EasyVIEW/vlc/
 
       - name: Make portable zip
         shell: pwsh
