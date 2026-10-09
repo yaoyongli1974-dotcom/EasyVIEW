@@ -5,7 +5,7 @@ Version:        0.1.1
 Release:        1%{?dist}
 Summary:        Lightweight RTSP/HTTP-HLS video surveillance preview client
 License:        MIT
-URL:            https://github.com/yaoyongli1974-dotcom/ivms4200-lite
+URL:            https://github.com/yaoyongli1974-dotcom/EasyVIEW
 Source0:        %{name}-bundle.tar.gz
 Source1:        easyview.desktop
 Source2:        icon.png

@@ -126,9 +126,21 @@ jobs:
       - name: List release assets
         run: find artifacts -type f
 
+      - name: Generate SHA256SUMS
+        run: |
+          cd artifacts
+          find . -type f -exec sha256sum {} \; \
+            | awk '{n=$2; sub(/.*\//,"",n); print $1"  "n}' \
+            | sort -k2 > ../SHA256SUMS
+          echo "=== SHA256SUMS ==="
+          cat ../SHA256SUMS
+
       - uses: softprops/action-gh-release@v2
         with:
           name: EasyVIEW ${{ github.ref_name }}
           generate_release_notes: true
+          make_latest: true
           fail_on_unmatched_files: false
-          files: artifacts/*/*
+          files: |
+            artifacts/*/*
+            SHA256SUMS
