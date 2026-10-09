@@ -207,3 +207,52 @@ def test_list_double_click_keeps_layout(qt_app, tmp_db):
     assert w.grid.fullscreen_widget is None
     assert w.isFullScreen() is False
     w.close()
+
+
+def test_channel_camera_derivation():
+    from core.camera import Camera
+
+    cam = Camera(name="nvr", ip="1.2.3.4", username="admin", password="pass",
+                 vendor="hikvision", channels=8, protocol="rtsp")
+    c3 = cam.channel_camera(3)
+    assert c3.channel == 3
+    assert c3.stream_uri == ""
+    assert c3.rtsp_url() == "rtsp://admin:pass@1.2.3.4:554/Streaming/Channels/301"
+
+
+def test_channel_manager_tree(qt_app, tmp_db):
+    from core.camera import Camera, add_camera
+    from ui.channel_manager import ChannelManager
+
+    add_camera(Camera(name="nvr", ip="10.0.0.1", username="admin", password="x",
+                      channels=4, group="一楼"))
+    dlg = ChannelManager()
+    assert dlg.tree.columnCount() == len(ChannelManager.HEADERS)
+    assert dlg.tree.topLevelItemCount() == 1          # 一个分组
+    group = dlg.tree.topLevelItem(0)
+    assert group.childCount() == 1                    # 一台设备
+    device = group.child(0)
+    assert device.childCount() == 4                   # 4 个通道
+    dlg.close()
+
+
+def test_play_channels_single_vs_group(qt_app, tmp_db):
+    """单路不改布局；多路按数量自动分屏。"""
+    from core.camera import Camera, add_camera, list_cameras
+    from ui.main_window import MainWindow
+
+    add_camera(Camera(name="t", ip="127.0.0.1", port=1))
+    w = MainWindow()
+    w.show()
+    w._set_count(4)
+    qt_app.processEvents()
+    cam = list_cameras()[0]
+
+    w._play_channels([cam])
+    assert w.grid.current_count == 4                  # 单路不改布局
+
+    nvr = Camera(name="nvr", ip="127.0.0.1", port=1, channels=6)
+    w._play_channels([nvr.channel_camera(i) for i in range(1, 7)])
+    assert w.grid.current_count == 6                  # 多路自动扩容排版
+    w.close()
+

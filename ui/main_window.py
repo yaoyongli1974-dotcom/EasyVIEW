@@ -27,6 +27,7 @@ from core.config import MAX_CHANNELS, VLC_ARGS
 import vlc
 from ui.camera_dialog import CameraDialog
 from ui.camera_list import CameraListPanel
+from ui.channel_manager import ChannelManager
 from ui.video_grid import VideoGrid
 
 
@@ -59,6 +60,7 @@ class MainWindow(QMainWindow):
 
         filem = mbar.addMenu("文件(&F)")
         self._menu_action(filem, "添加摄像机…", self._add_camera)
+        self._menu_action(filem, "监控通道管理…", self._open_channel_manager)
         filem.addSeparator()
         self._menu_action(filem, "退出", self.close, "Ctrl+Q")
 
@@ -85,10 +87,13 @@ class MainWindow(QMainWindow):
         lay.setContentsMargins(4, 0, 6, 0)
         lay.setSpacing(4)
         self.min_btn = QPushButton("最小化")
+        self.min_btn.setObjectName("winBtn")
         self.min_btn.clicked.connect(self.showMinimized)
         self.max_btn = QPushButton("最大化")
+        self.max_btn.setObjectName("winBtn")
         self.max_btn.clicked.connect(self._toggle_max)
         self.close_btn = QPushButton("关闭")
+        self.close_btn.setObjectName("closeBtn")
         self.close_btn.clicked.connect(self.close)
         for b in (self.min_btn, self.max_btn, self.close_btn):
             b.setFixedHeight(22)
@@ -112,17 +117,21 @@ class MainWindow(QMainWindow):
         tb.addWidget(self.count_spin)
         self._add_btn(tb, "应用", self._apply_count)
         tb.addSeparator()
+        self._add_btn(tb, "通道管理", self._open_channel_manager)
+        tb.addSeparator()
         for n in (1, 4, 6, 9, 16):
             self._add_btn(tb, str(n), lambda _checked=False, v=n: self._set_count(v))
         tb.addSeparator()
         self._add_btn(tb, "添加窗口", self._add_slot)
         self._add_btn(tb, "删除窗口", self._remove_slot)
         tb.addSeparator()
-        self._add_btn(tb, "视窗全屏", self._window_fullscreen)
+        self._add_btn(tb, "视窗全屏", self._window_fullscreen, name="accent")
         self._add_btn(tb, "停止全部", self.grid.clear_all)
 
-    def _add_btn(self, tb: QToolBar, text: str, slot) -> QPushButton:
+    def _add_btn(self, tb: QToolBar, text: str, slot, name: str = None) -> QPushButton:
         btn = QPushButton(text)
+        if name:
+            btn.setObjectName(name)
         btn.clicked.connect(slot)
         tb.addWidget(btn)
         return btn
@@ -130,7 +139,11 @@ class MainWindow(QMainWindow):
     # ---------- 主体 ----------
     def _build_body(self):
         left = QVBoxLayout()
-        left.addWidget(QLabel("摄像机列表"))
+        left.setContentsMargins(8, 10, 4, 8)
+        left.setSpacing(6)
+        title = QLabel("摄像机")
+        title.setObjectName("sideTitle")
+        left.addWidget(title)
         self.cam_list = CameraListPanel()
         left.addWidget(self.cam_list)
         left_widget = QWidget()
@@ -142,8 +155,10 @@ class MainWindow(QMainWindow):
         self.grid = VideoGrid(self.instance)
 
         body = QWidget()
+        body.setObjectName("CentralRoot")
         body_layout = QHBoxLayout(body)
-        body_layout.setContentsMargins(0, 0, 0, 0)
+        body_layout.setContentsMargins(6, 6, 8, 8)
+        body_layout.setSpacing(8)
         body_layout.addWidget(left_widget)
         body_layout.addWidget(self.grid, 1)
         self.setCentralWidget(body)
@@ -278,6 +293,40 @@ class MainWindow(QMainWindow):
             self.statusBar().showMessage(f"设备「{cam.name}」已上墙到 窗口{slot + 1}")
         else:
             self.statusBar().showMessage("没有可用窗口，请先增加窗口数量")
+
+    def _open_channel_manager(self):
+        """打开监控通道管理窗口（非模态，可边管理边预览）。"""
+        dlg = getattr(self, "_channel_manager", None)
+        if dlg is None:
+            dlg = ChannelManager(self)
+            dlg.playRequested.connect(self._play_channels)
+            dlg.changed.connect(self.cam_list.refresh)
+            self._channel_manager = dlg
+        dlg.refresh()
+        dlg.show()
+        dlg.raise_()
+        dlg.activateWindow()
+
+    def _play_channels(self, cams):
+        """上墙若干路：单路进当前窗格（不改布局）；多路按数量自动分屏。"""
+        cams = [c for c in cams if c is not None]
+        if not cams:
+            return
+        if len(cams) == 1:
+            self._on_play_requested(cams[0])
+            return
+        if self.grid.current_count < len(cams):
+            self._set_count(len(cams))
+        n = self.grid.current_count
+        free = [i for i in range(n) if self.grid.widgets[i].camera is None]
+        order = free + [i for i in range(n) if i not in free]
+        last = None
+        for cam, slot in zip(cams, order):
+            self.grid.widgets[slot].set_camera(cam)
+            last = slot
+        if last is not None:
+            self.grid.on_select(self.grid.widgets[last])
+        self.statusBar().showMessage(f"已上墙 {min(len(cams), n)} 路")
 
     def _add_camera(self):
         dlg = CameraDialog()

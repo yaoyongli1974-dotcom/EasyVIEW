@@ -20,12 +20,29 @@ class Camera:
     enabled: bool = True
     stream_uri: str = ""         # 完整流地址（HTTP/HLS 或自定义 RTSP），优先于模板
     protocol: str = "rtsp"       # 接入协议：rtsp / http(HLS/MJPEG)
+    channels: int = 1            # 设备通道数（NVR 多通道）
+    group: str = ""              # 所属分组（通道管理树：分组→设备→通道）
 
     def rtsp_url(self) -> str:
         """统一入口：优先完整流地址，否则按厂商模板构造。"""
         from core import rtsp_templates
 
         return rtsp_templates.camera_rtsp_url(self)
+
+    def channel_camera(self, channel: int) -> "Camera":
+        """派生指定通道的副本（多通道设备批量上墙用）。"""
+        from dataclasses import replace
+
+        idx = max(1, int(channel))
+        derived = replace(self)
+        derived.id = None
+        derived.channel = idx
+        # 完整流地址可能含通道占位符，替换；否则派生时清空以便按模板重建
+        if derived.protocol == "http" and self.stream_uri:
+            derived.stream_uri = self.stream_uri.replace("{ch}", str(idx))
+        else:
+            derived.stream_uri = ""
+        return derived
 
 
 # ---------------- CRUD（密码入库即加密）----------------
@@ -44,6 +61,8 @@ def _row_to_camera(row) -> Camera:
         enabled=bool(row["enabled"]),
         stream_uri=row["stream_uri"] or "",
         protocol=(row["protocol"] if "protocol" in row.keys() else "rtsp") or "rtsp",
+        channels=(row["channels"] if "channels" in row.keys() else 1) or 1,
+        group=(row["group_name"] if "group_name" in row.keys() else "") or "",
     )
 
 
@@ -52,11 +71,13 @@ def add_camera(cam: Camera) -> int:
     conn = get_conn()
     cur = conn.execute(
         """INSERT INTO cameras (name, ip, port, username, password,
-                                channel, stream_type, vendor, enabled, stream_uri, protocol)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                                channel, stream_type, vendor, enabled, stream_uri,
+                                protocol, channels, group_name)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (cam.name, cam.ip, cam.port, cam.username, vault.encrypt(cam.password),
          cam.channel, cam.stream_type, cam.vendor, int(cam.enabled),
-         cam.stream_uri or "", cam.protocol or "rtsp"),
+         cam.stream_uri or "", cam.protocol or "rtsp",
+         int(cam.channels or 1), cam.group or ""),
     )
     cid = cur.lastrowid
     conn.commit()
@@ -69,11 +90,12 @@ def update_camera(cam: Camera) -> None:
     conn = get_conn()
     conn.execute(
         """UPDATE cameras SET name=?, ip=?, port=?, username=?, password=?,
-           channel=?, stream_type=?, vendor=?, enabled=?, stream_uri=?, protocol=?
-           WHERE id=?""",
+           channel=?, stream_type=?, vendor=?, enabled=?, stream_uri=?,
+           protocol=?, channels=?, group_name=? WHERE id=?""",
         (cam.name, cam.ip, cam.port, cam.username, vault.encrypt(cam.password),
          cam.channel, cam.stream_type, cam.vendor, int(cam.enabled),
-         cam.stream_uri or "", cam.protocol or "rtsp", cam.id),
+         cam.stream_uri or "", cam.protocol or "rtsp",
+         int(cam.channels or 1), cam.group or "", cam.id),
     )
     conn.commit()
     conn.close()

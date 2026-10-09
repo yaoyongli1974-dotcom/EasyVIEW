@@ -5,6 +5,7 @@
 ## 功能
 
 - **摄像机管理**：手动添加/编辑/删除，密码加密持久化（密钥存于 OS 凭据库，不落明文）
+- **监控通道管理**：分组 → 设备 → 通道 树形管理；多通道设备（NVR）一键批量上墙；连接测试状态着色
 - **实时预览**：1~64 路；双击窗格单路全屏，`F11` / 「视窗全屏」整墙全屏，`Esc` 退出
 - **自动分屏**：按窗口数量排版——完美平方等分，其余优先「1 大(2×2) + N 小」（如 6 = 1 大 + 5 小）
 - **多厂商 RTSP 模板**：海康 / 大华 / 宇视 / 乐橙，也可直接填完整 `stream_uri`
@@ -36,6 +37,8 @@
 
 - 添加摄像机：菜单「文件 → 添加摄像机…」，填 IP/端口/用户名/密码；协议 RTSP 时按厂商模板生成地址，
   或填完整「流地址」。
+- 通道管理：菜单/工具栏「通道管理」打开树形窗口，按 分组 → 设备 → 通道 管理；可增删改、连接测试；
+  双击通道上墙到当前窗格，双击设备/分组按通道数自动分屏。
 - 预览：左侧列表双击上墙到当前选中窗格。
 - 分屏：顶部输入窗口数量（1~64）或点预设按钮；「添加/删除窗口」动态增减。
 - 全屏：双击窗格单路全屏；「视窗全屏」/ `F11` 整墙全屏；`Esc` 退出。
@@ -67,8 +70,8 @@ QT_QPA_PLATFORM=offscreen pytest tests -v   # GUI 测试用 Qt offscreen 后端
 ```
 main.py   入口（Linux 自动切 xcb）
 core/     config / crypto / database / camera / rtsp_templates / net_probe
-ui/       main_window / camera_list / camera_dialog / video_grid / preview_widget / layouts
-tests/    pytest 用例（RTSP 模板 / 加密 / 连接诊断 / 布局 / GUI 冒烟）
+ui/       main_window / camera_list / camera_dialog / channel_manager / video_grid / preview_widget / layouts / theme
+tests/    pytest 用例（RTSP 模板 / 加密 / 连接诊断 / 布局 / 通道 / GUI 冒烟）
 tools/    mock_cameras.py（模拟 HLS 摄像机）
 docs/     技术方案.md
 ```

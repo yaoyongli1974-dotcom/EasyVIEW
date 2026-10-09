@@ -23,9 +23,15 @@ class CameraDialog(QDialog):
 
     def _build(self):
         lay = QFormLayout(self)
+        lay.setContentsMargins(20, 18, 20, 16)
+        lay.setHorizontalSpacing(14)
+        lay.setVerticalSpacing(10)
+        self.setMinimumWidth(400)
 
         self.name = QLineEdit()
         self.name.setPlaceholderText("摄像机名称（留空则用 IP）")
+        self.group = QLineEdit()
+        self.group.setPlaceholderText("分组名，如 一楼 / 车间（可空）")
         self.ip = QLineEdit()
         self.ip.setPlaceholderText("如 192.168.1.64")
         self.port = QSpinBox()
@@ -39,6 +45,10 @@ class CameraDialog(QDialog):
         self.channel = QSpinBox()
         self.channel.setRange(1, 64)
         self.channel.setValue(1)
+        self.channels = QSpinBox()
+        self.channels.setRange(1, 64)
+        self.channels.setValue(1)
+        self.channels.setToolTip("设备总通道数（NVR 多通道，用于批量上墙）")
         self.stream = QComboBox()
         self.stream.addItems(["主码流(main)", "子码流(sub)"])
         self.protocol = QComboBox()
@@ -54,9 +64,10 @@ class CameraDialog(QDialog):
         self.enabled = QCheckBox("启用")
 
         for label, widget in [
-            ("名称", self.name), ("IP 地址", self.ip), ("端口", self.port),
+            ("名称", self.name), ("分组", self.group), ("IP 地址", self.ip), ("端口", self.port),
             ("接入协议", self.protocol), ("用户名", self.user), ("密码", self.pwd),
-            ("通道号", self.channel), ("码流类型", self.stream), ("厂商", self.vendor),
+            ("通道号", self.channel), ("通道总数", self.channels),
+            ("码流类型", self.stream), ("厂商", self.vendor),
             ("流地址", self.uri), ("状态", self.enabled),
         ]:
             lay.addRow(label, widget)
@@ -70,11 +81,13 @@ class CameraDialog(QDialog):
 
     def _load(self, cam: Camera):
         self.name.setText(cam.name)
+        self.group.setText(getattr(cam, "group", "") or "")
         self.ip.setText(cam.ip)
         self.port.setValue(cam.port)
         self.user.setText(cam.username)
         self.pwd.setText(cam.password)
         self.channel.setValue(cam.channel)
+        self.channels.setValue(getattr(cam, "channels", 1) or 1)
         self.stream.setCurrentIndex(0 if cam.stream_type == "main" else 1)
         idx = self.protocol.findData(getattr(cam, "protocol", "rtsp") or "rtsp")
         self.protocol.setCurrentIndex(idx if idx >= 0 else 0)
@@ -91,6 +104,8 @@ class CameraDialog(QDialog):
         cam.username = self.user.text().strip()
         cam.password = self.pwd.text()
         cam.channel = self.channel.value()
+        cam.channels = self.channels.value()
+        cam.group = self.group.text().strip()
         cam.stream_type = "main" if self.stream.currentIndex() == 0 else "sub"
         cam.protocol = self.protocol.currentData() or "rtsp"
         cam.vendor = self.vendor.currentText()
