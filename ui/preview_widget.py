@@ -14,13 +14,14 @@ import sys
 import time
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, QEvent, QTimer, pyqtSignal
+from PyQt6.QtCore import Qt, QEvent, QTimer, QSize, pyqtSignal
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import QFrame, QLabel, QMenu, QSizePolicy, QVBoxLayout, QWidget
 
 # 必须先用 core.config 完成 VLC 运行时路径注入，再 import vlc
 from core.config import DATA_DIR, HW_MODE, VOUT
 from core.camera import Camera
+from ui.theme import ACCENT, TEXT_DIM
 
 import vlc
 
@@ -42,11 +43,20 @@ class PreviewWidget(QWidget):
         self._press_pos = None
         self._dragging = False
         self._aspect = "auto"   # 画面比例：auto/16:9/4:3/1:1
+        # 尺寸策略：始终「可扩展」，避免视频未播放（video_frame 隐藏）时尺寸提示为 0，
+        # 导致 QGridLayout 在某路开始播放后把空间全给该路、其余窗格塌缩为 0。
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self._setup_ui()
         # 事件过滤器挂在视频层与各覆盖层：鼠标事件不再依赖额外的透明原生窗口
         self.video_frame.installEventFilter(self)
         self.overlay.installEventFilter(self)
         self.badge.installEventFilter(self)
+
+    def sizeHint(self):
+        return QSize(160, 120)
+
+    def minimumSizeHint(self):
+        return QSize(80, 60)
 
     def _setup_ui(self):
         # VLC 渲染目标：稳定原生窗口（HWND），set_hwnd 直渲
@@ -67,7 +77,9 @@ class PreviewWidget(QWidget):
         self.overlay = QLabel(self)
         self.overlay.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.overlay.setText("无信号")
-        self.overlay.setStyleSheet("color: #9aa0a6; font-size: 13px;")
+        self.overlay.setStyleSheet(
+            f"color: {TEXT_DIM}; font-size: 13px; letter-spacing: 3px;"
+        )
 
         # 窗口序号徽标：左上角常驻（鼠标穿透），便于在多个窗口间区分
         self.badge = QLabel(self)
@@ -91,11 +103,17 @@ class PreviewWidget(QWidget):
         self._show_empty_layers()
 
     def _style_badge(self, active: bool):
-        bg = "#2d8cf0" if active else "rgba(15,15,15,150)"
-        self.badge.setStyleSheet(
-            f"background:{bg}; color:white; border-radius:3px; "
-            f"padding:1px 5px; font-size:11px; font-weight:bold;"
-        )
+        if active:
+            self.badge.setStyleSheet(
+                f"background: {ACCENT}; color: #04121a; border-radius: 4px; "
+                f"padding: 1px 6px; font-size: 11px; font-weight: 800;"
+            )
+        else:
+            self.badge.setStyleSheet(
+                "background: rgba(11,15,25,180); color: #8b98b0; "
+                "border: 1px solid rgba(38,48,74,180); border-radius: 4px; "
+                "padding: 1px 6px; font-size: 11px; font-weight: 700;"
+            )
         self.badge.setText(str(self.channel_index + 1))
 
     def _show_empty_layers(self):

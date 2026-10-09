@@ -15,13 +15,14 @@ import vlc
 
 from core.config import MAX_CHANNELS
 from ui.preview_widget import PreviewWidget
+from ui.theme import ACCENT as ACCENT_HEX, GRID_BG, SEP as SEP_HEX
 
 # 间隙宽度（px）：单元格之间留出的间距，分隔线画在间隙正中
 GAP = 8
-# 分隔线颜色：中性石板灰（监控墙「边框」质感）
-SEP_COLOR = QColor("#64748b")
-# 选中窗高亮颜色：品牌蓝
-ACTIVE_COLOR = QColor("#2d8cf0")
+# 分隔线颜色：与主题一致的中性描边
+SEP_COLOR = QColor(SEP_HEX)
+# 选中窗高亮颜色：主题强调色（青）
+ACTIVE_COLOR = QColor(ACCENT_HEX)
 ACTIVE_THICK = 3
 SEP_THICK = 2
 
@@ -51,9 +52,9 @@ class VideoGrid(QWidget):
         self.grid.setSpacing(GAP)
         self.grid.setContentsMargins(GAP, GAP, GAP, GAP)
 
-        # 网格底色：深灰
+        # 网格底色：深空黑，突出画面
         pal = self.palette()
-        pal.setColor(self.backgroundRole(), QColor("#111827"))
+        pal.setColor(self.backgroundRole(), QColor(GRID_BG))
         self.setPalette(pal)
         self.setAutoFillBackground(True)
 
