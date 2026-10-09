@@ -17,9 +17,9 @@ from pathlib import Path
 from cryptography.fernet import Fernet, InvalidToken
 import keyring
 
-SERVICE_NAME = "IVMS4200-Lite"
+SERVICE_NAME = "EasyVIEW"
 KEYRING_USERNAME = "camera-db-key"
-_FALLBACK_PATH = Path.home() / ".ivms4200-lite" / "vault.key"
+_FALLBACK_PATH = Path.home() / ".easyview" / "vault.key"
 
 
 class CredentialVault:

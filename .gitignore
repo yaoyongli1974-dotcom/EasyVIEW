@@ -30,6 +30,7 @@ data/
 *.sqlite
 *.sqlite3
 *.log
+easyview_debug.log
 ivms_debug.log
 
 # ===== 测试/预览截图产物 =====
@@ -46,3 +47,10 @@ Desktop.ini
 
 # ===== WorkBuddy 本地数据 =====
 .workbuddy/
+
+# ===== 模拟摄像机生成的测试素材 / 运行文件 =====
+tools/mock_media/
+
+# ===== 参考资料（厂商手册，不入库）=====
+iVMS-4200*.pdf
+iVMS-*.pdf

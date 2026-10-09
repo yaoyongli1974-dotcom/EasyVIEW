@@ -1,6 +1,6 @@
 @echo off
 REM ============================================================
-REM Build IVMS4200-Lite Windows executable with PyInstaller
+REM Build EasyVIEW Windows executable with PyInstaller
 REM Requirements: Python 3.11+ on PATH; (optional) VLC installed
 REM Usage: double-click or run from project root
 REM ============================================================
@@ -24,13 +24,13 @@ if exist "%ProgramFiles%\VideoLAN\VLC\libvlc.dll" set "VLC_DIR=%ProgramFiles%\Vi
 if exist "%ProgramFiles(x86)%\VideoLAN\VLC\libvlc.dll" set "VLC_DIR=%ProgramFiles(x86)%\VideoLAN\VLC"
 if defined VLC_DIR (
     echo Copying VLC runtime from %VLC_DIR% ...
-    xcopy "%VLC_DIR%\*" "dist\IVMS4200-Lite\vlc\" /E /I /Y >nul
+    xcopy "%VLC_DIR%\*" "dist\EasyVIEW\vlc\" /E /I /Y >nul
 ) else (
     echo WARNING: VLC not found on this machine.
-    echo         Copy a VLC install directory into dist\IVMS4200-Lite\vlc\
+    echo         Copy a VLC install directory into dist\EasyVIEW\vlc\
     echo         before distributing, OR require end users to install VLC.
 )
 
 echo.
-echo Build complete: dist\IVMS4200-Lite\IVMS4200-Lite.exe
+echo Build complete: dist\EasyVIEW\EasyVIEW.exe
 endlocal

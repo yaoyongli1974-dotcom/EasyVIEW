@@ -1,26 +1,28 @@
 """单路视频预览控件：封装一个 VLC MediaPlayer，渲染到子窗口句柄。
 
-交互统一在事件过滤器中处理。关键修复（v5）：
-之前 video_frame 是 WA_NativeWindow 原生窗口，VLC 直渲进去后 Win32 把鼠标事件
-直接发给这个原生 HWND，Qt 的 eventFilter 收不到单击，导致「点窗口无法选中」。
-v5 新增一层透明原生 click_catcher（置于 video_frame 之上、视觉全透明），由它专门
-接收鼠标事件并转发，VLC 渲染与鼠标捕获互不干扰，单击/双击/右键/拖拽全部可靠。
+交互在事件过滤器中统一处理（v8）：
+- 每路只保留「一个原生窗口」video_frame 作为 VLC 渲染目标，鼠标事件直接在其
+  eventFilter 中处理。v5~v7 曾在 video_frame 之上叠加一个「透明原生」click_catcher
+  来接管鼠标，但那会让每个单元格产生 2 个原生窗口；9 路即 18 个相互堆叠的原生窗口，
+  在没有合成器（compositor）的 X11 上极易出现画面残留/重叠。现予移除。
+- 空白态显示 overlay（无信号）接收事件；播放态由 video_frame 接收。
 
 分隔线 / 选中高亮不由本控件画（原生窗口会盖掉自身矩形内的 Qt 绘制），改由 VideoGrid
 在单元格「间隙」区绘制（见 video_grid.py）—— 间隙不在任何原生视频窗口矩形内，绝对可见。
 """
-import os
 import sys
 import time
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, QEvent, QTimer, pyqtSignal
-from PyQt6.QtGui import QPalette, QColor
-from PyQt6.QtWidgets import QFrame, QLabel, QSizePolicy, QVBoxLayout, QWidget
+from PyQt6.QtCore import Qt, QEvent, QTimer, QUrl, pyqtSignal
+from PyQt6.QtGui import QColor
+from PyQt6.QtWidgets import QFrame, QLabel, QMenu, QSizePolicy, QVBoxLayout, QWidget
+
+# 必须先用 core.config 完成 VLC 运行时路径注入，再 import vlc
+from core.config import DATA_DIR, HW_MODE, VOUT
+from core.camera import Camera
 
 import vlc
-from core.camera import Camera
-from core.config import DATA_DIR, HW_MODE, VOUT
 
 
 class PreviewWidget(QWidget):
@@ -29,6 +31,7 @@ class PreviewWidget(QWidget):
     clearRequested = pyqtSignal(object)     # 右键 -> 清空该窗口（停止并解除设备）
     dragSwapRequested = pyqtSignal(object)  # 拖拽到其他窗口 -> 请求交换画面
     escapeRequested = pyqtSignal(object)    # 全屏下按 ESC -> 请求退出全屏
+    floatRequested = pyqtSignal(object)     # 右键菜单 -> 浮出为独立窗口
 
     def __init__(self, vlc_instance: vlc.Instance, channel_index: int = 0):
         super().__init__()
@@ -39,30 +42,27 @@ class PreviewWidget(QWidget):
         self._is_active = False
         self._press_pos = None
         self._dragging = False
+        self._aspect = "auto"   # 画面比例：auto/16:9/4:3/1:1
         self._setup_ui()
-        # 三层都挂事件过滤器：视频态由 click_catcher 收，空窗态由 overlay 收
+        # 事件过滤器挂在视频层与各覆盖层：鼠标事件不再依赖额外的透明原生窗口
         self.video_frame.installEventFilter(self)
-        self.click_catcher.installEventFilter(self)
         self.overlay.installEventFilter(self)
+        self.badge.installEventFilter(self)
 
     def _setup_ui(self):
         # VLC 渲染目标：稳定原生窗口（HWND），set_hwnd 直渲
         self.video_frame = QFrame(self)
         self.video_frame.setFrameShape(QFrame.Shape.NoFrame)
-        self.video_frame.setMinimumSize(160, 120)
+        self.video_frame.setMinimumSize(80, 60)
         self.video_frame.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.video_frame.setAttribute(Qt.WidgetAttribute.WA_NativeWindow, True)
+        # 不透明自绘：避免半透明/合成路径在无合成器的 X11 上产生残影
+        self.video_frame.setAttribute(Qt.WidgetAttribute.WA_OpaquePaintEvent, True)
         pal_vf = self.video_frame.palette()
         pal_vf.setColor(self.video_frame.backgroundRole(), QColor("black"))
         self.video_frame.setPalette(pal_vf)
         self.video_frame.setAutoFillBackground(True)
-
-        # 透明点击捕获层：原生窗口、置于 video_frame 之上、视觉全透明，但「吃」鼠标事件
-        self.click_catcher = QFrame(self)
-        self.click_catcher.setFrameShape(QFrame.Shape.NoFrame)
-        self.click_catcher.setAttribute(Qt.WidgetAttribute.WA_NativeWindow, True)
-        self.click_catcher.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, True)
-        self.click_catcher.setMouseTracking(True)
+        self.video_frame.setMouseTracking(True)
 
         # 「无信号」提示层（空窗态显示；原生窗口之上不可靠，故空窗时单独置顶）
         self.overlay = QLabel(self)
@@ -100,19 +100,16 @@ class PreviewWidget(QWidget):
         self.badge.setText(str(self.channel_index + 1))
 
     def _show_empty_layers(self):
-        """空窗态：隐藏视频与点击层，显示「无信号」并置顶（由 overlay 收鼠标）。"""
+        """空窗态：隐藏视频层，显示「无信号」并置顶（由 overlay 收鼠标）。"""
         self.video_frame.hide()
-        self.click_catcher.hide()
         self.overlay.show()
         self.overlay.raise_()
         self.badge.raise_()
 
     def _show_playing_layers(self):
-        """播放态：显示视频层，透明点击层置顶收鼠标，「无信号」隐藏。"""
+        """播放态：显示视频层，「无信号」隐藏。"""
         self.overlay.hide()
         self.video_frame.show()
-        self.click_catcher.show()
-        self.click_catcher.raise_()
         self.badge.raise_()
 
     def set_active(self, flag: bool):
@@ -123,14 +120,11 @@ class PreviewWidget(QWidget):
     def resizeEvent(self, event):
         w, h = self.width(), self.height()
         self.video_frame.setGeometry(0, 0, w, h)
-        self.click_catcher.setGeometry(0, 0, w, h)
         self.overlay.setGeometry(0, 0, w, h)
         self.badge.setGeometry(6, 6, 22, 18)
         # 按当前状态维持正确的置顶层
         if self.camera is None:
             self.overlay.raise_()
-        else:
-            self.click_catcher.raise_()
         self.badge.raise_()
         super().resizeEvent(event)
 
@@ -154,7 +148,7 @@ class PreviewWidget(QWidget):
                 self.player.event_manager().event_attach(
                     vlc.EventType.MediaPlayerVout,
                     lambda e: (self._log("vout created -> video output active"),
-                               QTimer.singleShot(0, self.click_catcher.raise_)),
+                               QTimer.singleShot(0, self._rebind_hwnd)),
                 )
             except Exception:
                 pass
@@ -171,10 +165,10 @@ class PreviewWidget(QWidget):
         media = self.instance.media_new(self.camera.rtsp_url())
         media.add_option("network-caching=300")
         media.add_option("rtsp-tcp")
+        self._apply_aspect(media)
         self.player.set_media(media)
         self.player.play()
         QTimer.singleShot(120, self._rebind_hwnd)
-        QTimer.singleShot(150, self.click_catcher.raise_)
         QTimer.singleShot(1500, self._check_playing)
 
     # ---------- 诊断辅助 ----------
@@ -190,7 +184,7 @@ class PreviewWidget(QWidget):
 
     def _log(self, msg: str):
         try:
-            p = Path(DATA_DIR) / "ivms_debug.log"
+            p = Path(DATA_DIR) / "easyview_debug.log"
             with open(p, "a", encoding="utf-8") as f:
                 f.write(time.strftime("%Y-%m-%d %H:%M:%S") + f" ch{self.channel_index} {msg}\n")
         except Exception:
@@ -220,7 +214,8 @@ class PreviewWidget(QWidget):
                 self.player.set_hwnd(win_id)
             else:
                 self.player.set_xwindow(win_id)
-        media = self.instance.media_new("file:///" + path)
+        # 跨平台本地文件 URL（Windows 下 "file:///C:\..." 无效，须用 QUrl 规范化）
+        media = self.instance.media_new(QUrl.fromLocalFile(path).toString())
         media.add_option("network-caching=300")
         self.player.set_media(media)
         self.player.play()
@@ -238,7 +233,6 @@ class PreviewWidget(QWidget):
             else:
                 self.player.set_xwindow(win_id)
             self.video_frame.repaint()
-            self.click_catcher.raise_()
         except Exception:
             pass
 
@@ -251,7 +245,6 @@ class PreviewWidget(QWidget):
                 self.player.set_hwnd(win_id)
             else:
                 self.player.set_xwindow(win_id)
-            self.click_catcher.raise_()
         except Exception:
             pass
 
@@ -264,9 +257,40 @@ class PreviewWidget(QWidget):
         except Exception:
             return False
 
+    # ---------- 画面比例 ----------
+    def _apply_aspect(self, media):
+        if self._aspect and self._aspect != "auto":
+            # VLC 媒体级选项：强制源画面比例（等比缩放到窗口）
+            media.add_option(f":aspect-ratio={self._aspect}")
+
+    def set_aspect(self, aspect: str):
+        """设置画面比例并即时重连当前流使其生效。"""
+        self._aspect = aspect or "auto"
+        if self.camera is not None:
+            self.start()
+
+    # ---------- 右键菜单 ----------
+    def _show_context_menu(self, global_pos):
+        menu = QMenu(self)
+        if self.camera is not None:
+            menu.addAction("浮出为独立窗口", lambda: self.floatRequested.emit(self))
+            menu.addAction("清空窗口", lambda: self.clearRequested.emit(self))
+            menu.addSeparator()
+            ratio = menu.addMenu("画面比例")
+            for label, val in [("自动（等比）", "auto"), ("16:9", "16:9"),
+                               ("4:3", "4:3"), ("1:1", "1:1")]:
+                act = ratio.addAction(label)
+                act.setCheckable(True)
+                act.setChecked(self._aspect == val)
+                act.triggered.connect(lambda _checked=False, v=val: self.set_aspect(v))
+        else:
+            menu.addAction("（无信号）", lambda: None)
+            menu.addAction("清空窗口", lambda: self.clearRequested.emit(self))
+        menu.exec(global_pos)
+
     # ---------- 事件过滤器：全部交互的统一入口 ----------
     def eventFilter(self, obj, event):
-        if obj in (self.video_frame, self.click_catcher, self.overlay):
+        if obj in (self.video_frame, self.overlay, self.badge):
             t = event.type()
             if t == QEvent.Type.MouseButtonDblClick:
                 self._on_double_click()
@@ -276,7 +300,7 @@ class PreviewWidget(QWidget):
                 return True
             if t == QEvent.Type.MouseButtonRelease:
                 if event.button() == Qt.MouseButton.RightButton:
-                    self.clearRequested.emit(self)
+                    self._show_context_menu(event.globalPosition().toPoint())
                     return True
                 self._on_release(event)
                 return True
@@ -287,6 +311,10 @@ class PreviewWidget(QWidget):
                 self._on_key(event)
                 return True
         return super().eventFilter(obj, event)
+
+    # 全屏时键盘焦点在本控件自身（而非子层），需在此兜底处理 Esc
+    def keyPressEvent(self, event):
+        self._on_key(event)
 
     def _on_press(self, event):
         if event.button() == Qt.MouseButton.LeftButton:

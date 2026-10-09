@@ -52,7 +52,13 @@ def build_rtsp(
 
 
 def camera_rtsp_url(cam: Camera) -> str:
-    """Camera 统一入口：若已通过 ONVIF 取得权威地址则优先使用。"""
+    """Camera 统一入口：优先 ONVIF 权威地址；HTTP/HLS 协议直接用完整 URL。"""
+    protocol = (getattr(cam, "protocol", "rtsp") or "rtsp").lower()
+    if protocol == "http":
+        # HTTP/HLS/MJPEG：必须使用完整 stream_uri（含协议头）
+        if getattr(cam, "stream_uri", None):
+            return cam.stream_uri
+        return f"http://{cam.ip}:{cam.port}/"
     if getattr(cam, "stream_uri", None):
         return cam.stream_uri
     return build_rtsp(

@@ -3,20 +3,20 @@
 # 由 PyInstaller onedir 包生成 AppImage（单文件、跨发行版可直接运行）。
 # 前置：appimagetool（AppImageKit）。脚本会自动下载到 build/ 目录（若未找到）。
 # 用法：bash build/build_appimage.sh
-# 产物：dist/IVMS4200-Lite-1.0.0-x86_64.AppImage
+# 产物：dist/EasyVIEW-1.0.0-x86_64.AppImage
 # ==============================================================================
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-APP_NAME="ivms4200-lite"
+APP_NAME="easyview"
 VERSION="1.0.0"
 ARCH="x86_64"
 
-BUNDLE="$ROOT/dist/IVMS4200-Lite"
-if [ ! -x "$BUNDLE/IVMS4200-Lite" ]; then
-    echo "错误：未找到 PyInstaller 产物 $BUNDLE/IVMS4200-Lite，请先运行 build/build_linux.sh" >&2
+BUNDLE="$ROOT/dist/EasyVIEW"
+if [ ! -x "$BUNDLE/EasyVIEW" ]; then
+    echo "错误：未找到 PyInstaller 产物 $BUNDLE/EasyVIEW，请先运行 build/build_linux.sh" >&2
     exit 1
 fi
 
@@ -52,7 +52,7 @@ chmod +x "$APPDIR/AppRun"
 cat > "$APPDIR/$APP_NAME.desktop" <<EOF
 [Desktop Entry]
 Type=Application
-Name=IVMS4200-Lite
+Name=EasyVIEW
 GenericName=Video Surveillance Client
 Comment=Lightweight IVMS-4200-like RTSP video preview client
 Exec=$APP_NAME

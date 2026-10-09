@@ -1,12 +1,7 @@
 """摄像机模型、RTSP 地址构造、CRUD（密码加密存储）与连接测试。"""
-import socket
-import threading
 from dataclasses import asdict, dataclass
 from typing import Optional
 
-import vlc
-
-from core.config import VLC_ARGS
 from core.crypto import get_vault
 from core.database import get_conn
 
@@ -24,12 +19,30 @@ class Camera:
     vendor: str = "hikvision"
     enabled: bool = True
     stream_uri: str = ""         # ONVIF 取得的权威 RTSP（含鉴权），优先于模板
+    protocol: str = "rtsp"       # 接入协议：rtsp / onvif / http(HLS/MJPEG)
+    channels: int = 1            # 设备通道数（NVR 多通道，供批量上墙）
+    group: str = ""              # 所属分组（iVMS 风格：分组→设备→通道）
 
     def rtsp_url(self) -> str:
         """统一入口：优先 ONVIF 权威地址，否则按厂商模板构造。"""
         from core import rtsp_templates
 
         return rtsp_templates.camera_rtsp_url(self)
+
+    def channel_camera(self, channel: int) -> "Camera":
+        """派生指定通道的副本（多通道设备批量上墙用）。"""
+        from dataclasses import replace
+
+        idx = max(1, int(channel))
+        derived = replace(self)
+        derived.id = None
+        derived.channel = idx
+        # ONVIF 权威地址只对应单一通道，多通道派生时改用厂商模板重建
+        derived.stream_uri = ""
+        if derived.protocol == "http" and self.stream_uri:
+            # HTTP/HLS 地址若含通道占位符则替换，否则原样
+            derived.stream_uri = self.stream_uri.replace("{ch}", str(idx))
+        return derived
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -50,6 +63,9 @@ def _row_to_camera(row) -> Camera:
         vendor=row["vendor"],
         enabled=bool(row["enabled"]),
         stream_uri=row["stream_uri"] or "",
+        protocol=(row["protocol"] if "protocol" in row.keys() else "rtsp") or "rtsp",
+        channels=(row["channels"] if "channels" in row.keys() else 1) or 1,
+        group=(row["group_name"] if "group_name" in row.keys() else "") or "",
     )
 
 
@@ -58,10 +74,12 @@ def add_camera(cam: Camera) -> int:
     conn = get_conn()
     cur = conn.execute(
         """INSERT INTO cameras (name, ip, port, username, password,
-                                channel, stream_type, vendor, enabled, stream_uri)
-           VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                                channel, stream_type, vendor, enabled, stream_uri,
+                                protocol, channels, group_name)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (cam.name, cam.ip, cam.port, cam.username, vault.encrypt(cam.password),
-         cam.channel, cam.stream_type, cam.vendor, int(cam.enabled), cam.stream_uri or ""),
+         cam.channel, cam.stream_type, cam.vendor, int(cam.enabled), cam.stream_uri or "",
+         cam.protocol or "rtsp", int(cam.channels or 1), cam.group or ""),
     )
     cid = cur.lastrowid
     conn.commit()
@@ -74,9 +92,11 @@ def update_camera(cam: Camera) -> None:
     conn = get_conn()
     conn.execute(
         """UPDATE cameras SET name=?, ip=?, port=?, username=?, password=?,
-           channel=?, stream_type=?, vendor=?, enabled=?, stream_uri=? WHERE id=?""",
+           channel=?, stream_type=?, vendor=?, enabled=?, stream_uri=?,
+           protocol=?, channels=?, group_name=? WHERE id=?""",
         (cam.name, cam.ip, cam.port, cam.username, vault.encrypt(cam.password),
-         cam.channel, cam.stream_type, cam.vendor, int(cam.enabled), cam.stream_uri or "", cam.id),
+         cam.channel, cam.stream_type, cam.vendor, int(cam.enabled), cam.stream_uri or "",
+         cam.protocol or "rtsp", int(cam.channels or 1), cam.group or "", cam.id),
     )
     conn.commit()
     conn.close()
@@ -103,39 +123,13 @@ def get_camera(cid: int) -> Optional[Camera]:
     return _row_to_camera(row) if row else None
 
 
-# ---------------- 连接测试（两阶段探测）----------------
-def test_connection(cam: Camera, timeout: float = 4.0) -> tuple[bool, str]:
-    """先测 TCP 端口可达，再测 RTSP 流能否被 VLC 拉起播放。"""
-    try:
-        with socket.create_connection((cam.ip, cam.port), timeout=timeout):
-            pass
-    except OSError as e:
-        return False, f"TCP 连接失败（{cam.ip}:{cam.port}）：{e}"
+# ---------------- 连接测试（分类诊断）----------------
+def test_connection(cam: Camera, timeout: float = 5.0) -> tuple[bool, str]:
+    """连接测试：区分网络超时/连接被拒绝/密码错误/地址错误/无视频流等。
 
-    result = {"playing": False}
-    done = threading.Event()
-    instance = vlc.Instance("--no-audio", "--rtsp-tcp", "--network-caching=300")
-    media = instance.media_new(cam.rtsp_url())
-    media.add_option(f"timeout={int(timeout * 1000)}")
-    player = instance.media_player_new()
-    player.set_media(media)
+    先用 socket 探测 TCP 可达性，再用 RTSP DESCRIBE / HTTP GET 探测流可用性与鉴权。
+    """
+    from core.net_probe import diagnose_connection
 
-    def on_playing(_event):
-        result["playing"] = True
-        done.set()
-
-    def on_error(_event):
-        done.set()
-
-    em = player.event_manager()
-    em.event_attach(vlc.EventType.MediaPlayerPlaying, on_playing)
-    em.event_attach(vlc.EventType.MediaPlayerEncounteredError, on_error)
-
-    player.play()
-    done.wait(timeout)
-    player.stop()
-    instance.release()
-
-    if result["playing"]:
-        return True, "连接成功，视频流可播放"
-    return False, "TCP 可达但 RTSP 拉流失败（请检查用户名/密码/码流类型是否匹配）"
+    code, msg = diagnose_connection(cam, timeout)
+    return code == "ok", msg

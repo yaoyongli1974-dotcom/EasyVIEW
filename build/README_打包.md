@@ -1,7 +1,7 @@
-# IVMS4200-Lite 打包与部署指南（Windows）
+# EasyVIEW 打包与部署指南（Windows）
 
-本文档说明如何将本工程编译为 Windows 可执行程序（`IVMS4200-Lite.exe`），
-并进一步制作为安装包（`IVMS4200-Lite-Setup.exe`）。
+本文档说明如何将本工程编译为 Windows 可执行程序（`EasyVIEW.exe`），
+并进一步制作为安装包（`EasyVIEW-Setup.exe`）。
 
 ---
 
@@ -29,9 +29,9 @@ build\build_exe.bat
 1. 在当前目录创建 `.venv` 虚拟环境并激活；
 2. 安装 `requirements.txt` 与 `pyinstaller`；
 3. 用 `build/build.spec` 打包（隐藏控制台、`onedir` 单文件夹模式）；
-4. 若本机已装 VLC，自动将其运行时复制到 `dist\IVMS4200-Lite\vlc\`。
+4. 若本机已装 VLC，自动将其运行时复制到 `dist\EasyVIEW\vlc\`。
 
-产物：`dist\IVMS4200-Lite\IVMS4200-Lite.exe`（连同一堆依赖 dll/pyd）。
+产物：`dist\EasyVIEW\EasyVIEW.exe`（连同一堆依赖 dll/pyd）。
 
 **手工打包（等价命令）：**
 
@@ -53,8 +53,8 @@ python -m PyInstaller build\build.spec --noconfirm --clean
 
 因此有两种分发方式：
 
-- **方式 A（开箱即用，推荐）**：把 VLC 安装目录整体复制到 `dist\IVMS4200-Lite\vlc\`。
-  即保证 `dist\IVMS4200-Lite\vlc\libvlc.dll` 与 `...\vlc\plugins\` 存在。
+- **方式 A（开箱即用，推荐）**：把 VLC 安装目录整体复制到 `dist\EasyVIEW\vlc\`。
+  即保证 `dist\EasyVIEW\vlc\libvlc.dll` 与 `...\vlc\plugins\` 存在。
   构建脚本 `build_exe.bat` 在检测到本机 VLC 时会自动完成这一步。
 - **方式 B（体积小，依赖用户）**：不打包 VLC，要求最终用户自行安装 VLC。
   此时 exe 会走搜索顺序第 2 项从系统 VLC 加载。
@@ -72,13 +72,13 @@ python -m PyInstaller build\build.spec --noconfirm --clean
 makensis build\installer.nsi
 ```
 
-产物：`dist\IVMS4200-Lite-Setup.exe`。
+产物：`dist\EasyVIEW-Setup.exe`。
 
 安装包行为：
-- 默认安装到 `C:\Program Files\IVMS4200-Lite\`；
+- 默认安装到 `C:\Program Files\EasyVIEW\`；
 - 写入开始菜单与桌面快捷方式；
 - 写入标准卸载注册表项，并提供 `Uninstall.exe`；
-- 整体打包 `dist\IVMS4200-Lite\*`（含 `vlc\` 运行时，若已存在）。
+- 整体打包 `dist\EasyVIEW\*`（含 `vlc\` 运行时，若已存在）。
 
 ---
 
@@ -87,7 +87,7 @@ makensis build\installer.nsi
 打包后（frozen）数据目录改为用户本地应用数据，避免随 exe 卸载丢失：
 
 ```
-%LOCALAPPDATA%\IVMS4200-Lite\
+%LOCALAPPDATA%\EasyVIEW\
 ├── cameras.db          # 摄像机配置（密码以密文存储）
 ├── recordings\         # 本地录像分段文件
 └── snapshots\          # 截图抓拍
@@ -118,10 +118,10 @@ ONVIF 预置位轮巡，功能仍可用。`core\vendor_sdk.py` 已做优雅降�
 
 ## 8. 代码签名（可选，提升信任）
 
-发布给外部用户建议对 `IVMS4200-Lite.exe` 与 `Setup.exe` 做 Authenticode 签名：
+发布给外部用户建议对 `EasyVIEW.exe` 与 `Setup.exe` 做 Authenticode 签名：
 
 ```bat
-signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f cert.pfx /p <密码> dist\IVMS4200-Lite\IVMS4200-Lite.exe
+signtool sign /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 /f cert.pfx /p <密码> dist\EasyVIEW\EasyVIEW.exe
 ```
 
 未签名时 Windows SmartScreen 可能拦截，用户需点击「仍要运行」。

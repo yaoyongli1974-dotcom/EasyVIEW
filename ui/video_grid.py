@@ -1,14 +1,14 @@
-"""预览网格：管理 1~9 路 PreviewWidget 的布局、单画面、全屏与拖拽交换。
+"""预览网格：1~64 路的自适应布局、单画面、全屏与拖拽交换。
 
-分隔线方案（v5，优雅中性 + 真机绝对可见）：
-分隔线画在「单元格自身」会被 video_frame 的 WA_NativeWindow 原生窗口吃掉，故改为由
-网格容器 VideoGrid 自己画——VideoGrid 是普通 QWidget（非原生），paintEvent 100% 可靠；
-用 QGridLayout 的 spacing 在单元格间留「间隙」，间隙属于网格自身、不在任何原生视频窗口
-矩形内，因此画什么绝对可见。v5 视觉升级为「监控墙边框」风格：中性石板灰细线作为分隔，
-选中窗整圈品牌蓝高亮，均画在间隙正中而非压在视频上。
+v7（稳定性修复）
+- 单元格定位交回 QGridLayout 管理（Qt 会在窗口缩放时批量、正确地重排原生视频窗口），
+  避免手工 setGeometry 在缩放过程中频繁移动 9 个原生窗口导致的画面残留/错位。
+- 分隔线与选中高亮按「实际控件几何」绘制（画在 QGridLayout 的 spacing 间隙中，
+  位于原生视频窗口之外，绝对可见且与真实布局一致）。
+- 支持动态增删窗口（收缩时自动把被隐藏格子的设备迁移到空闲格子）。
 """
-from PyQt6.QtCore import Qt, QPoint, QRect
-from PyQt6.QtGui import QCursor, QPalette, QColor, QPainter, QPen
+from PyQt6.QtCore import Qt, QPoint, QRect, pyqtSignal
+from PyQt6.QtGui import QCursor, QColor, QPainter, QPen
 from PyQt6.QtWidgets import QGridLayout, QWidget
 
 import vlc
@@ -17,8 +17,8 @@ from core.config import MAX_CHANNELS
 from ui.preview_widget import PreviewWidget
 
 # 间隙宽度（px）：单元格之间留出的间距，分隔线画在间隙正中
-GAP = 6
-# 分隔线颜色：中性石板灰（监控墙「边框」质感），深色视频上也清晰但不刺眼
+GAP = 8
+# 分隔线颜色：中性石板灰（监控墙「边框」质感）
 SEP_COLOR = QColor("#64748b")
 # 选中窗高亮颜色：品牌蓝
 ACTIVE_COLOR = QColor("#2d8cf0")
@@ -27,30 +27,38 @@ SEP_THICK = 2
 
 
 class VideoGrid(QWidget):
+    # 某路预览请求「浮出为独立窗口」（由预览控件右键菜单触发）
+    floatRequested = pyqtSignal(object)
+    # 请求进入某路全屏 / 退出全屏（窗口级全屏由 MainWindow 负责）
+    fullscreenRequested = pyqtSignal(object)
+    fullscreenExitRequested = pyqtSignal()
+
     def __init__(self, vlc_instance: vlc.Instance, max_channels: int = MAX_CHANNELS):
         super().__init__()
         self.instance = vlc_instance
         self.max_channels = max_channels
 
         # 预创建 MAX_CHANNELS 个预览控件，布局切换时复用，避免频繁创建销毁 MediaPlayer
-        self.widgets = [PreviewWidget(vlc_instance, i) for i in range(max_channels)]
-        for w in self.widgets:
+        self.widgets = []
+        for i in range(max_channels):
+            w = PreviewWidget(vlc_instance, i)
             w.doubleClicked.connect(self.on_double_click)
             w.selected.connect(self.on_select)
             w.dragSwapRequested.connect(self.on_drag_swap)
             w.escapeRequested.connect(self.on_escape)
             w.clearRequested.connect(self.on_clear)
+            w.floatRequested.connect(self.floatRequested)
+            self.widgets.append(w)
 
         self.grid = QGridLayout(self)
-        # 单元格之间留出 GAP px 间隙，间隙由网格自身背景填充（见 palette）。
         self.grid.setSpacing(GAP)
         self.grid.setContentsMargins(GAP, GAP, GAP, GAP)
-        # 网格底色：深灰，让亮金分隔线对比鲜明
+
+        # 网格底色：深灰
         pal = self.palette()
         pal.setColor(self.backgroundRole(), QColor("#111827"))
         self.setPalette(pal)
         self.setAutoFillBackground(True)
-        self.setLayout(self.grid)
 
         self.current_layout = (1, 1)
         self.single_widget = None
@@ -63,33 +71,72 @@ class VideoGrid(QWidget):
         while self.grid.count():
             self.grid.takeAt(0)
 
-    def apply_layout(self, rows: int, cols: int):
-        rows = max(1, min(rows, self.max_channels))
-        cols = max(1, min(cols, self.max_channels))
+    def apply_layout(self, rows: int, cols: int, tiles=None):
+        """应用分屏。
+
+        tiles 为可选窗格列表 ``(row, col, row_span, col_span)``；缺省时按
+        rows×cols 等分。窗格数量即上墙窗口数（≤ len(tiles)）。
+        """
+        rows = max(1, min(int(rows), self.max_channels))
+        cols = max(1, min(int(cols), self.max_channels))
+        if tiles is None:
+            count = min(rows * cols, self.max_channels)
+            tiles = [(i // cols, i % cols, 1, 1) for i in range(count)]
+        else:
+            count = min(len(tiles), self.max_channels)
+            tiles = list(tiles[:count])
+
+        # 收缩时把将被隐藏格子的设备迁移到新的空闲格子，避免上墙丢失
+        orphans = [(w, w.camera) for w in self.widgets[count:] if w.camera is not None]
+        for w, _ in orphans:
+            w.set_camera(None)
+        free = [self.widgets[i] for i in range(count) if self.widgets[i].camera is None]
+        for _, cam in orphans:
+            if not free:
+                break
+            free.pop(0).set_camera(cam)
+
         self._clear()
-        count = min(rows * cols, self.max_channels)
         for idx, w in enumerate(self.widgets[:count]):
-            r, c = divmod(idx, cols)
-            self.grid.addWidget(w, r, c)
+            r, c, rs, cs = tiles[idx]
+            self.grid.addWidget(w, r, c, rs, cs)
             w.show()
         for w in self.widgets[count:]:
             w.set_camera(None)
             w.hide()
         self.current_layout = (rows, cols)
+        self.current_tiles = tiles
         self.single_widget = None
-        self.update()   # 布局变化后立即重绘分隔线
+        self.update()
 
+    def apply_count(self, n: int):
+        """按窗口数量自动排版（含「1 大 + N 小」）。"""
+        from ui.layouts import auto_layout
+
+        rows, cols, tiles = auto_layout(n, self.max_channels)
+        self.apply_layout(rows, cols, tiles)
+        return len(tiles)
+
+    @property
+    def current_count(self) -> int:
+        return len(getattr(self, "current_tiles", []) or [])
+
+    def _active_widgets(self):
+        """当前处于网格中的可见控件（全屏浮出的不算）。"""
+        return [w for w in self.widgets if w.isVisible() and w.parent() is self]
+
+    # ---------- 选中 / 双击 / 清空 ----------
     def on_double_click(self, widget: PreviewWidget):
         if self.fullscreen_widget is widget:
-            self.exit_fullscreen()
+            self.fullscreenExitRequested.emit()
             return
-        self.enter_fullscreen(widget)
+        self.fullscreenRequested.emit(widget)
 
     def on_select(self, widget: PreviewWidget):
         self.active_widget = widget
         for w in self.widgets:
             w.set_active(w is widget)
-        self.update()   # 选中态变化，重绘高亮
+        self.update()
 
     def on_clear(self, widget: PreviewWidget):
         widget.set_camera(None)
@@ -100,13 +147,13 @@ class VideoGrid(QWidget):
 
     # ---------- 拖拽交换两路画面 ----------
     def on_drag_swap(self, src: PreviewWidget):
-        if self.single_widget or self.fullscreen_widget:
+        if self.fullscreen_widget:
             return
         if not src.isVisible():
             return
         gp = QCursor.pos()
-        for w in self.widgets:
-            if w is src or not w.isVisible():
+        for w in self._active_widgets():
+            if w is src:
                 continue
             topleft = w.mapToGlobal(QPoint(0, 0))
             rect = QRect(topleft, w.size())
@@ -121,40 +168,40 @@ class VideoGrid(QWidget):
 
     # ---------- 全屏 ----------
     def enter_fullscreen(self, widget: PreviewWidget = None):
-        if self.fullscreen_widget:
-            return
+        """网格内只显示 widget 并铺满整个网格区（不脱离窗口层级）。
+
+        真正的窗口级全屏（隐藏工具栏/列表/停靠窗并 showFullScreen）由 MainWindow
+        负责。这里刻意不把控件 setParent(None) 浮出为顶层窗口：含原生 VLC 子窗口
+        （video_frame）的控件一旦被重新挂载为顶层窗口，XWayland（Hyprland 等平铺式
+        Wayland 合成器）会拒绝其全屏请求，表现为「全屏不了」。
+        """
+        if self.fullscreen_widget is not None:
+            return None
         target = widget or self.active_widget or self.widgets[0]
         if target is None or not target.isVisible():
-            return
-        target.setParent(None)
-        target.setWindowFlags(Qt.WindowType.Window)
-        target.showFullScreen()
-        target.activateWindow()
-        target.setFocus()
-        target.reattach()
+            return None
+        self._fs_prev_layout = self.current_layout
+        self._fs_prev_tiles = self.current_tiles
+        self._clear()
+        self.grid.addWidget(target, 0, 0)
+        for w in self.widgets:
+            w.setVisible(w is target)
         self.fullscreen_widget = target
+        self.update()
+        return target
 
     def exit_fullscreen(self):
-        if not self.fullscreen_widget:
+        if self.fullscreen_widget is None:
             return
-        w = self.fullscreen_widget
-        w.setWindowFlags(Qt.WindowType.Widget)
-        idx = self.widgets.index(w)
-        r, c = self.current_layout
-        if self.single_widget is w:
-            self.grid.addWidget(w, 0, 0, r, c)
-        else:
-            rr, cc = divmod(idx, c)
-            self.grid.addWidget(w, rr, cc)
-        w.show()
-        w.raise_()
-        w.reattach()
         self.fullscreen_widget = None
-        self.update()
+        # 还原到全屏前的分屏布局（含「1 大 + N 小」的跨格窗格）
+        rows, cols = getattr(self, "_fs_prev_layout", self.current_layout)
+        tiles = getattr(self, "_fs_prev_tiles", None)
+        self.apply_layout(rows, cols, tiles)
 
     def on_escape(self, widget: PreviewWidget):
         if self.fullscreen_widget is widget:
-            self.exit_fullscreen()
+            self.fullscreenExitRequested.emit()
 
     # ---------- 播放控制 ----------
     def play_camera(self, camera, slot: int = None) -> int | None:
@@ -182,50 +229,30 @@ class VideoGrid(QWidget):
         self.single_widget = None
         self.update()
 
-    # ---------- 分隔线绘制（核心，网格自身，绝对可见）----------
-    def _cell_geometry(self, idx: int, rows: int, cols: int):
-        """按网格自身尺寸直接算第 idx 个单元格的矩形（不依赖 cellRect，避免布局未激活时失效）。"""
-        m = GAP  # 与 setContentsMargins 一致
-        total_w = self.width()
-        total_h = self.height()
-        inner_w = total_w - 2 * m
-        inner_h = total_h - 2 * m
-        cw = (inner_w - (cols - 1) * GAP) / cols
-        ch = (inner_h - (rows - 1) * GAP) / rows
-        rr, cc = divmod(idx, cols)
-        x = m + cc * (cw + GAP)
-        y = m + rr * (ch + GAP)
-        return QRect(int(round(x)), int(round(y)), int(round(cw)), int(round(ch)))
-
+    # ---------- 分隔线绘制（按实际控件几何，画在间隙中）----------
     def paintEvent(self, event):
         super().paintEvent(event)
-        rows, cols = self.current_layout
-        n = min(rows * cols, self.max_channels)
-        if n == 0 or self.width() <= 0:
+        if self.fullscreen_widget is not None:
             return
+        active = self.active_widget
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, False)
-        # 线画在「间隙正中」（cell 边界外 GAP//2 px），完全落在间隙内，
-        # 不压在 video_frame 原生窗口上，因此始终可见、播放中也可见。
         exp_off = GAP // 2
-        # 第一遍：非激活 cell 画中性分隔线
-        for idx in range(n):
-            w = self.widgets[idx]
-            if w is self.active_widget:
+        # 第一遍：所有 cell 画中性分隔线
+        for w in self._active_widgets():
+            if w is active:
                 continue
-            rect = self._cell_geometry(idx, rows, cols)
+            rect = w.geometry()
             if rect.width() <= 0 or rect.height() <= 0:
                 continue
             painter.setPen(QPen(SEP_COLOR, SEP_THICK))
             painter.setBrush(Qt.BrushStyle.NoBrush)
             painter.drawRect(rect.adjusted(-exp_off, -exp_off, exp_off, exp_off))
-        # 第二遍：激活 cell 画品牌蓝高亮（后画，覆盖与邻居共享的间隙，形成完整蓝框）
-        if self.active_widget is not None and self.active_widget.isVisible():
-            idx = self.widgets.index(self.active_widget)
-            if 0 <= idx < n:
-                rect = self._cell_geometry(idx, rows, cols)
-                if rect.width() > 0 and rect.height() > 0:
-                    painter.setPen(QPen(ACTIVE_COLOR, ACTIVE_THICK))
-                    painter.setBrush(Qt.BrushStyle.NoBrush)
-                    painter.drawRect(rect.adjusted(-exp_off, -exp_off, exp_off, exp_off))
+        # 第二遍：激活 cell 画品牌蓝高亮
+        if active is not None and active.parent() is self and active.isVisible():
+            rect = active.geometry()
+            if rect.width() > 0 and rect.height() > 0:
+                painter.setPen(QPen(ACTIVE_COLOR, ACTIVE_THICK))
+                painter.setBrush(Qt.BrushStyle.NoBrush)
+                painter.drawRect(rect.adjusted(-exp_off, -exp_off, exp_off, exp_off))
         painter.end()

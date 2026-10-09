@@ -1,4 +1,4 @@
-# IVMS4200-Lite v1.0
+# EasyVIEW v1.0
 
 PyQt6 + LibVLC 桌面监控客户端（类海康 IVMS-4200），面向 Windows / Linux 跨平台 RTSP 预览。
 
@@ -16,7 +16,7 @@ v1.0 采用优雅的「石板灰分隔线 + 品牌蓝选中高亮」设计（2px
 点击捕获层修复了原生视频窗口吞掉鼠标事件导致「点不中窗口」的问题。
 
 ## 安装
-- **Windows**：下载附件 `IVMS4200-Lite-Setup.exe`（已含 VLC 运行时，开箱即用），默认安装到 `C:\Program Files\IVMS4200-Lite\`
+- **Windows**：下载附件 `EasyVIEW-Setup.exe`（已含 VLC 运行时，开箱即用），默认安装到 `C:\Program Files\EasyVIEW\`
 - **从源码构建**：见 `docs/BUILD.md`（PyInstaller onedir + NSIS 安装包；附 Docker / Linux deb/rpm/AppImage 脚本）
 
 ## 仓库结构

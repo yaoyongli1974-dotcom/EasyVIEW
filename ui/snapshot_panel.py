@@ -1,5 +1,5 @@
 """截图抓拍面板：手动抓拍当前激活路 + 定时抓拍 + 历史快照检索。"""""
-from PyQt6.QtCore import Qt, pyqtSignal, QUrl
+from PyQt6.QtCore import pyqtSignal, QUrl
 from PyQt6.QtGui import QDesktopServices
 from PyQt6.QtWidgets import (
     QComboBox,
@@ -17,7 +17,6 @@ import time
 
 from core.camera import Camera
 from core.snapshot import SnapshotManager, search_snapshots
-from core.config import DATA_DIR
 
 
 class SnapshotPanel(QWidget):

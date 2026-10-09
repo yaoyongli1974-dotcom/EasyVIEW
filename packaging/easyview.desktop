@@ -1,10 +1,10 @@
 [Desktop Entry]
 Type=Application
-Name=IVMS4200-Lite
+Name=EasyVIEW
 GenericName=Video Surveillance Client
 Comment=Lightweight IVMS-4200-like RTSP video preview client
-Exec=/opt/ivms4200-lite/IVMS4200-Lite
-Icon=ivms4200-lite
+Exec=/opt/easyview/EasyVIEW
+Icon=easyview
 Terminal=false
 Categories=AudioVideo;Video;Network;Monitor;
 Keywords=surveillance;camera;RTSP;ONVIF;preview;

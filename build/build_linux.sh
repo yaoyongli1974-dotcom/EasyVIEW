@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# 在 Linux 主机上一键构建 IVMS4200-Lite 的 PyInstaller onedir 包。
-# 产物：dist/IVMS4200-Lite/（含主程序与 _internal 依赖集合）
+# 在 Linux 主机上一键构建 EasyVIEW 的 PyInstaller onedir 包。
+# 产物：dist/EasyVIEW/（含主程序与 _internal 依赖集合）
 #
 # 前置（以 Debian/Ubuntu 为例）：
 #   sudo apt update
@@ -29,10 +29,10 @@ echo "==> [2/3] PyInstaller 构建 onedir 包"
 python -m PyInstaller build/build_linux.spec --noconfirm --clean --workpath build_pyi
 
 echo "==> [3/3] 完成"
-if [ -x "dist/IVMS4200-Lite/IVMS4200-Lite" ]; then
-    echo "产物已生成：dist/IVMS4200-Lite/IVMS4200-Lite"
+if [ -x "dist/EasyVIEW/EasyVIEW" ]; then
+    echo "产物已生成：dist/EasyVIEW/EasyVIEW"
     echo "可继续运行 build/build_deb.sh / build/build_rpm.sh / build/build_appimage.sh 生成安装包"
 else
-    echo "错误：未找到构建产物 dist/IVMS4200-Lite/IVMS4200-Lite" >&2
+    echo "错误：未找到构建产物 dist/EasyVIEW/EasyVIEW" >&2
     exit 1
 fi

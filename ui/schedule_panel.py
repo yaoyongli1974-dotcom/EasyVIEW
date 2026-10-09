@@ -8,6 +8,7 @@ from PyQt6.QtWidgets import (
     QGroupBox,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
     QListWidget,
     QPushButton,
     QSpinBox,
@@ -16,7 +17,7 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from PyQt6.QtCore import pyqtSignal, pyqtSlot
+from PyQt6.QtCore import QTime, pyqtSignal
 
 from core.camera import Camera
 from core.recording_plan import (
@@ -131,7 +132,8 @@ class PlanDialog(QDialog):
         p.weekdays = wd
         p.start_min = self.start_t.time().hour() * 60 + self.start_t.time().minute()
         p.end_min = self.end_t.time().hour() * 60 + self.end_t.time().minute()
-        p.segment_seconds = self.seg_s.value()
+        # 分段时长按当前模式取对应控件（定时用 seg_s，移动侦测用 mseg）
+        p.segment_seconds = self.seg_s.value() if p.mode == "schedule" else self.mseg.value()
         p.sensitivity = self.sens.value()
         p.min_consecutive = self.mcon.value()
         p.pre_seconds = self.pre.value()

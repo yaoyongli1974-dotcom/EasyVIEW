@@ -1,5 +1,15 @@
 """应用入口。"""
+import os
 import sys
+
+# Linux：必须让 Qt 走 X11(xcb) 平台。
+# 原因：本程序通过 libvlc 的 set_xwindow(X11 窗口 ID) 把视频嵌进自制窗口；
+# 若 Qt 使用 Wayland 平台，winId() 不是 X11 窗口，VLC 会在 XWayland 里另开窗口，
+# 表现为视频画面/「无信号」框与主界面错位、重叠。只要存在 DISPLAY(XWayland/原生 X11)
+# 就强制 xcb（即使环境里已有 QT_QPA_PLATFORM=wayland;xcb，也改为 xcb）。
+# 需要强制其它平台时，设置环境变量 EASYVIEW_QT_PLATFORM 覆盖。
+if sys.platform.startswith("linux") and os.environ.get("DISPLAY"):
+    os.environ["QT_QPA_PLATFORM"] = os.environ.get("EASYVIEW_QT_PLATFORM", "xcb")
 
 from PyQt6.QtWidgets import QApplication
 

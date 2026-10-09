@@ -1,5 +1,5 @@
 """ONVIF 设备自动发现对话框（WS-Discovery）。"""
-from PyQt6.QtCore import pyqtSignal, QThread, Qt
+from PyQt6.QtCore import pyqtSignal, QThread
 from PyQt6.QtWidgets import (
     QDialog,
     QHBoxLayout,

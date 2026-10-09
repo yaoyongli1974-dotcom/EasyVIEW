@@ -2,9 +2,9 @@
 
 打包注意：
 - 开发态 DATA_DIR 位于项目内 data/；打包（frozen）后按平台落到用户本地数据目录：
-    Windows -> %LOCALAPPDATA%/IVMS4200-Lite
-    Linux   -> $XDG_DATA_HOME 或 ~/.local/share/IVMS4200-Lite
-    macOS   -> ~/Library/Application Support/IVMS4200-Lite
+    Windows -> %LOCALAPPDATA%/EasyVIEW
+    Linux   -> $XDG_DATA_HOME 或 ~/.local/share/EasyVIEW
+    macOS   -> ~/Library/Application Support/EasyVIEW
   保证摄像机配置/录像/截图在重装、单文件解压场景下不丢失。
 - 打包后若无系统 VLC，可把 VLC 运行时放到可执行文件同目录的 vlc/ 子目录：
     Windows -> vlc/libvlc.dll + vlc/plugins/
@@ -17,7 +17,7 @@ import sys
 import json
 from pathlib import Path
 
-APP_NAME = "IVMS4200-Lite"
+APP_NAME = "EasyVIEW"
 APP_VERSION = "1.0.0"
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -41,26 +41,26 @@ def _data_dir() -> Path:
 DATA_DIR = _data_dir()
 DB_PATH = DATA_DIR / "cameras.db"
 
-# 最多预览路数（IVMS-4200 精简版取 9 路）
-MAX_CHANNELS = 9
+# 最多预览路数（支持到 8×8 监控墙）
+MAX_CHANNELS = 64
 
 # 硬件解码模式：用 set_hwnd 把视频画到自建窗口时，Windows 下的硬件解码（DXVA2/d3d11va）
 # 常把画面输出到独立 surface 而非我们提供的 HWND，表现为「连接测试正常、预览却黑屏」。
 # 因此默认软件解码（none）最稳。可用环境变量覆盖以便排查：
-#   set IVMS4200_VLC_HW=none   (默认，最稳，CPU 占用略高)
-#   set IVMS4200_VLC_HW=dxva2  (尝试 DXVA2 硬件加速)
-#   set IVMS4200_VLC_HW=d3d11va
-#   set IVMS4200_VLC_HW=any
+#   set EASYVIEW_VLC_HW=none   (默认，最稳，CPU 占用略高)
+#   set EASYVIEW_VLC_HW=dxva2  (尝试 DXVA2 硬件加速)
+#   set EASYVIEW_VLC_HW=d3d11va
+#   set EASYVIEW_VLC_HW=any
 # 视频输出模块（vout）：黑屏的真正元凶往往是 Windows 默认 direct3d11/direct3d9 把画面
 # 渲染到独立 surface。none 模式默认强制 wingdi（GDI 直绘进 HWND）。若 wingdi 在某台机器
 # 仍异常，可用环境变量切换，无需重新打包：
-#   set IVMS4200_VLC_VOUT=wingdi     (默认，none 模式下生效)
-#   set IVMS4200_VLC_VOUT=directdraw (GDI 的 DX 前身，备选)
-#   set IVMS4200_VLC_VOUT=direct3d11  (DXVA 硬件解码时才有意义)
-#   set IVMS4200_VLC_VOUT=auto        (完全交给 VLC 自选，不追加 --vout)
+#   set EASYVIEW_VLC_VOUT=wingdi     (默认，none 模式下生效)
+#   set EASYVIEW_VLC_VOUT=directdraw (GDI 的 DX 前身，备选)
+#   set EASYVIEW_VLC_VOUT=direct3d11  (DXVA 硬件解码时才有意义)
+#   set EASYVIEW_VLC_VOUT=auto        (完全交给 VLC 自选，不追加 --vout)
 def _load_hw_mode() -> str:
-    """解码模式优先级：环境变量 IVMS4200_VLC_HW > 持久化设置(settings.json) > 默认 none。"""
-    env = os.environ.get("IVMS4200_VLC_HW")
+    """解码模式优先级：环境变量 EASYVIEW_VLC_HW > 持久化设置(settings.json) > 默认 none。"""
+    env = os.environ.get("EASYVIEW_VLC_HW")
     if env:
         return env
     try:
@@ -110,14 +110,15 @@ HW_MODE = _load_hw_mode()
 
 
 def _load_vout() -> str | None:
-    """视频输出模块：环境变量 IVMS4200_VLC_VOUT > 持久化设置(settings.json) > 默认规则。
+    """视频输出模块：环境变量 EASYVIEW_VLC_VOUT > 持久化设置(settings.json) > 默认规则。
 
     - 显式设置（且非 auto）：直接采用，覆盖一切默认。
     - auto：不追加 --vout，完全交给 VLC。
-    - 均未设置：none 解码模式默认 wingdi（GDI 直绘进 HWND，根治黑屏）；
-      硬件解码模式（dxva2/d3d11va/any）不强制，交给 VLC 自选（DXVA 需 direct3d 呈现）。
+    - 均未设置：仅 Windows 的软件解码模式默认 wingdi（GDI 直绘进 HWND，根治黑屏）；
+      其他平台（Linux/macOS）不强制 --vout，交给 VLC 自选（wingdi 为 Windows 专用，
+      在 Linux 上会导致「unknown vout」并可能黑屏）。
     """
-    env = (os.environ.get("IVMS4200_VLC_VOUT") or "").strip().lower()
+    env = (os.environ.get("EASYVIEW_VLC_VOUT") or "").strip().lower()
     if env:
         return None if env == "auto" else env
     try:
@@ -130,7 +131,10 @@ def _load_vout() -> str | None:
                 return None if vm == "auto" else vm
     except Exception:
         pass
-    return "wingdi" if HW_MODE == "none" else None
+    # wingdi 是 Windows GDI 专用；非 Windows 平台保持 VLC 默认（auto）
+    if HW_MODE == "none" and sys.platform == "win32":
+        return "wingdi"
+    return None
 
 
 VOUT = _load_vout()
@@ -140,7 +144,6 @@ VLC_ARGS = [
     "--no-audio",
     "--no-snapshot-preview",
     "--no-video-title-show",
-    "--rtsp-tcp",
     "--network-caching=300",
     "--live-caching=300",
     "--sout-mux-caching=300",

@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
-# 重打包 IVMS4200-Lite（onedir，不含 NSIS）：
+# 重打包 EasyVIEW（onedir，不含 NSIS）：
 # 用唯一 distpath 避免 PyInstaller 清空已有目录被沙箱 safe-delete 拦截；
 # 路径一律用 Windows 盘符形式（D:/...）以兼容 Windows 版 Python 与 git-bash。
 set -e
-cd /d/workbuddy/4200/ivms4200-lite
+cd /d/workbuddy/4200/easyview
 PY="C:/Users/h/.workbuddy/binaries/python/versions/3.13.12/python.exe"
-BACKUP="D:/workbuddy/4200/ivms4200-lite/_vlc_backup"
+BACKUP="D:/workbuddy/4200/easyview/_vlc_backup"
 DIST_TAG="$(date +%m%d_%H%M%S)"
-OUT="D:/workbuddy/4200/ivms4200-lite/dist_$DIST_TAG"
+OUT="D:/workbuddy/4200/easyview/dist_$DIST_TAG"
 
 echo "[1] ensure VLC runtime backup"
 if [ ! -f "$BACKUP/libvlc.dll" ]; then
   mkdir -p "$BACKUP"
-  cp -r dist/IVMS4200-Lite/vlc "$BACKUP"
+  cp -r dist/EasyVIEW/vlc "$BACKUP"
 fi
 echo "    vlc backup: $([ -f "$BACKUP/libvlc.dll" ] && echo ok || echo MISSING)"
 
@@ -30,9 +30,9 @@ echo "[3] PyInstaller build -> $OUT (fresh dir, --clean to force re-analysis so 
 python -m PyInstaller build/build.spec --noconfirm --clean --distpath "$OUT"
 
 echo "[4] restore VLC runtime"
-mkdir -p "$OUT/IVMS4200-Lite/vlc"
-cp -r "$BACKUP/." "$OUT/IVMS4200-Lite/vlc/"
+mkdir -p "$OUT/EasyVIEW/vlc"
+cp -r "$BACKUP/." "$OUT/EasyVIEW/vlc/"
 
 echo "[5] verify"
-ls -lh "$OUT/IVMS4200-Lite/IVMS4200-Lite.exe"
+ls -lh "$OUT/EasyVIEW/EasyVIEW.exe"
 echo "REPACK_DONE OUT=$OUT"

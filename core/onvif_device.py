@@ -8,6 +8,10 @@ from typing import Optional
 
 from core.onvif_discovery import ONVIF_MANUFACTURERS
 
+# ONVIF 设备服务（HTTP）常见端口；相机模型里的 port 通常是 RTSP 554，
+# 直接拿去连 ONVIF 会失败，故按「用户端口 -> 常见 ONVIF 端口」顺序探测。
+ONVIF_HTTP_PORTS = (80, 8000, 8080)
+
 
 class OnvifDevice:
     def __init__(self, ip: str, port: int, username: str, password: str):
@@ -23,11 +27,27 @@ class OnvifDevice:
 
     # ---------------- 连接 ----------------
     def connect(self):
-        if self._cam is None:
-            from onvif import ONVIFCamera
+        if self._cam is not None:
+            return self._cam
+        from onvif import ONVIFCamera
 
-            self._cam = ONVIFCamera(self.ip, self.port, self.username, self.password)
-        return self._cam
+        candidates: list[int] = []
+        if self.port:
+            candidates.append(self.port)
+        for p in ONVIF_HTTP_PORTS:
+            if p not in candidates:
+                candidates.append(p)
+        last_err: Exception | None = None
+        for port in candidates:
+            try:
+                cam = ONVIFCamera(self.ip, port, self.username, self.password)
+                # 构造期即拉取 WSDL，可据此确认该端口是否有 ONVIF 服务
+                self._cam = cam
+                self.port = port
+                return self._cam
+            except Exception as e:  # 换下一个候选端口
+                last_err = e
+        raise RuntimeError(f"无法连接 ONVIF 设备 {self.ip}（尝试端口 {candidates}）：{last_err}")
 
     def _ensure_profile(self) -> str:
         if self._profile_token is None:
@@ -45,12 +65,16 @@ class OnvifDevice:
         }
 
     def vendor_key(self) -> str:
-        """根据设备厂商名匹配 rtsp 模板 key。"""
+        """根据设备厂商名匹配 rtsp 模板 key（与 rtsp_templates.match_vendor 同规则）。"""
         try:
             manu = self.device_info()["manufacturer"]
         except Exception:
             return "onvif"
-        return ONVIF_MANUFACTURERS.get(manu.strip().lower(), "onvif")
+        low = (manu or "").strip().lower()
+        for name, key in ONVIF_MANUFACTURERS.items():
+            if name in low:
+                return key
+        return "onvif"
 
     def stream_uri(self) -> str:
         """获取该设备主码流的权威 RTSP 地址（优先于模板）。"""

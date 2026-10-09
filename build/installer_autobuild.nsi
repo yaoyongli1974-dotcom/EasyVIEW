@@ -1,16 +1,16 @@
 ﻿; ============================================================
-; IVMS4200-Lite NSIS Installer Script (autobuild variant)
+; EasyVIEW NSIS Installer Script (autobuild variant)
 ; Points at dist_0902_002352 (v5-elegant-slate-separator: 石板灰细线 + 透明点击捕获层)
 ; Compile: makensis build\installer_autobuild.nsi
-; Output : dist_0902_002352\IVMS4200-Lite-Setup.exe
+; Output : dist_0902_002352\EasyVIEW-Setup.exe
 ; ============================================================
 Unicode true
-!define APPNAME "IVMS4200-Lite"
+!define APPNAME "EasyVIEW"
 !define APPVERSION "1.0.0"
-!define PUBLISHER "IVMS4200-Lite"
+!define PUBLISHER "EasyVIEW"
 
 Name "${APPNAME} ${APPVERSION}"
-OutFile "..\dist_0902_002352\IVMS4200-Lite-Setup.exe"
+OutFile "..\dist_0902_002352\EasyVIEW-Setup.exe"
 InstallDir "$PROGRAMFILES64\${APPNAME}"
 RequestExecutionLevel admin
 
@@ -24,8 +24,8 @@ RequestExecutionLevel admin
 
 Section "Main" SEC_MAIN
   SetOutPath "$INSTDIR"
-  ; dist_0902_002352\IVMS4200-Lite\* already contains PyInstaller output + vlc runtime
-  File /r "..\dist_0902_002352\IVMS4200-Lite"
+  ; dist_0902_002352\EasyVIEW\* already contains PyInstaller output + vlc runtime
+  File /r "..\dist_0902_002352\EasyVIEW"
 
   CreateDirectory "$SMPROGRAMS\${APPNAME}"
   CreateShortcut "$SMPROGRAMS\${APPNAME}\${APPNAME}.lnk" "$INSTDIR\${APPNAME}.exe"

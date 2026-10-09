@@ -30,12 +30,10 @@ from typing import Optional
 from core.database import get_conn
 from core.vendor_sdk import (
     CRUISE_DH_CLEAR,
-    CRUISE_DH_DEL,
     CRUISE_DH_FILL,
     CRUISE_DH_RUN,
     CRUISE_DH_STOP,
     CRUISE_HK_CLEAR,
-    CRUISE_HK_DEL,
     CRUISE_HK_FILL,
     CRUISE_HK_RUN,
     CRUISE_HK_STOP,

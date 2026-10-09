@@ -1,7 +1,7 @@
 """解码 / 渲染设置对话框。
 
 把"解码模式"与"视频输出模块"做成界面可点选，写入 settings.json，重启后生效。
-环境变量 IVMS4200_VLC_HW / IVMS4200_VLC_VOUT 仍可临时覆盖（优先级最高、无需重启）。
+环境变量 EASYVIEW_VLC_HW / EASYVIEW_VLC_VOUT 仍可临时覆盖（优先级最高、无需重启）。
 
 背景：预览黑屏的根因是 Windows 下 LibVLC 默认 direct3d vout 把画面渲染到独立 surface，
 set_hwnd 拿不到像素。软件解码（none）+ wingdi（GDI 直绘进 HWND）是最稳组合。若某台机器
@@ -66,8 +66,8 @@ class SettingsDialog(QDialog):
         self.hint = QLabel(
             "说明：修改后需重启程序生效。\n"
             "临时覆盖（立即生效、无需重启）可在启动前设置环境变量：\n"
-            "  IVMS4200_VLC_HW=none|dxva2|d3d11va|any\n"
-            "  IVMS4200_VLC_VOUT=wingdi|directdraw|direct3d11|auto"
+            "  EASYVIEW_VLC_HW=none|dxva2|d3d11va|any\n"
+            "  EASYVIEW_VLC_VOUT=wingdi|directdraw|direct3d11|auto"
         )
         self.hint.setWordWrap(True)
         self.hint.setStyleSheet("color:#9aa0a6; font-size:12px;")

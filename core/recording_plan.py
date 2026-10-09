@@ -36,10 +36,12 @@ import time
 from dataclasses import asdict, dataclass
 from typing import Optional
 
-import vlc
-
+# 必须先用 core.config 完成 VLC 运行时路径注入，再 import vlc
+from core.config import DATA_DIR
 from core.camera import get_camera
 from core.database import get_conn
+
+import vlc
 
 WEEKDAY_NAMES = ["周一", "周二", "周三", "周四", "周五", "周六", "周日"]
 
@@ -184,10 +186,12 @@ class PlanEngine:
 
     @staticmethod
     def _in_window(plan: RecordingPlan, now_dt) -> bool:
-        wd = now_dt.weekday()  # 0=周一
+        # now_dt 为 time.localtime() 的 struct_time（属性为 tm_wday/tm_hour/tm_min，
+        # 并非 datetime 的 weekday()/hour/minute）。tm_wday: 0=周一，与 weekdays 位序一致。
+        wd = now_dt.tm_wday
         if not (plan.weekdays >> wd) & 1:
             return False
-        cur = now_dt.hour * 60 + now_dt.minute
+        cur = now_dt.tm_hour * 60 + now_dt.tm_min
         if plan.start_min <= plan.end_min:
             return plan.start_min <= cur < plan.end_min
         return cur >= plan.start_min or cur < plan.end_min  # 跨夜
@@ -249,12 +253,26 @@ class PlanEngine:
         except Exception:
             return None
 
+    def _release_motion_player(self, camera_id: int):
+        """释放某路移动侦测的独立解码器（计划被删除/停用时调用，避免资源泄漏）。"""
+        player = self._motion_players.pop(camera_id, None)
+        if player is not None:
+            try:
+                player.stop()
+                player.release()
+            except Exception:
+                pass
+
     def _eval_motion(self):
-        tmp_root = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "motion_tmp")
-        os.makedirs(tmp_root, exist_ok=True)
-        for plan in list_plans():
-            if plan.mode != "motion" or not plan.enabled:
-                continue
+        tmp_root = DATA_DIR / "motion_tmp"
+        tmp_root.mkdir(parents=True, exist_ok=True)
+        active_plans = [p for p in list_plans() if p.mode == "motion" and p.enabled]
+        active_cam_ids = {p.camera_id for p in active_plans}
+        # 计划被删除或停用后，回收其独立解码器
+        for cid in list(self._motion_players.keys()):
+            if cid not in active_cam_ids:
+                self._release_motion_player(cid)
+        for plan in active_plans:
             player = self._ensure_player(plan)
             if player is None:
                 continue

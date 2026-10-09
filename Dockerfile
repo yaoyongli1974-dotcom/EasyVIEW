@@ -1,11 +1,11 @@
 # ==============================================================================
-# IVMS4200-Lite Linux 构建镜像（可复现、不污染本机）
+# EasyVIEW Linux 构建镜像（可复现、不污染本机）
 # 基于 Ubuntu 22.04，预装 Python/PyQt6 构建依赖、libvlc、dpkg-dev、rpmbuild。
 #
 # 构建镜像：
-#   docker build -t ivms4200-lite-builder .
+#   docker build -t easyview-builder .
 # 取出安装包（写入当前目录 out/）：
-#   docker run --rm -v "$PWD/out:/out" ivms4200-lite-builder
+#   docker run --rm -v "$PWD/out:/out" easyview-builder
 #
 # 镜像内已执行：PyInstaller onedir + deb + rpm + AppImage，结果在 /app/dist，
 # 容器启动时复制到挂载的 /out 卷。

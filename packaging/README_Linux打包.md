@@ -1,4 +1,4 @@
-# IVMS4200-Lite · Linux 打包说明
+# EasyVIEW · Linux 打包说明
 
 把现有 Windows 工程编译为 Linux 可用的可执行程序，并产出常见安装包格式：
 **`.deb`（Debian/Ubuntu）、`.rpm`（Fedora/RHEL/openSUSE）、`AppImage`（跨发行版单文件）**。
@@ -74,7 +74,7 @@ ls -lh out/
 
 ```bash
 bash build/build_linux.sh
-dist/IVMS4200-Lite/IVMS4200-Lite
+dist/EasyVIEW/EasyVIEW
 ```
 
 ---
@@ -83,10 +83,10 @@ dist/IVMS4200-Lite/IVMS4200-Lite
 
 | 格式 | 默认路径 | 说明 |
 |---|---|---|
-| onedir 包 | `dist/IVMS4200-Lite/` | 含主程序与 `_internal/`，可直接运行 |
-| `.deb` | `dist/ivms4200-lite_1.0.0_amd64.deb` | 安装到 `/opt/ivms4200-lite`，命令 `ivms4200-lite` |
-| `.rpm` | `~/rpmbuild/RPMS/x86_64/ivms4200-lite-1.0.0-1.*.x86_64.rpm` | 同上 |
-| AppImage | `dist/IVMS4200-Lite-1.0.0-x86_64.AppImage` | `chmod +x` 后直接运行，跨发行版 |
+| onedir 包 | `dist/EasyVIEW/` | 含主程序与 `_internal/`，可直接运行 |
+| `.deb` | `dist/easyview_1.0.0_amd64.deb` | 安装到 `/opt/easyview`，命令 `easyview` |
+| `.rpm` | `~/rpmbuild/RPMS/x86_64/easyview-1.0.0-1.*.x86_64.rpm` | 同上 |
+| AppImage | `dist/EasyVIEW-1.0.0-x86_64.AppImage` | `chmod +x` 后直接运行，跨发行版 |
 
 > Docker 方式下产物在 `out/` 目录。
 
@@ -96,16 +96,16 @@ dist/IVMS4200-Lite/IVMS4200-Lite
 
 ```bash
 # deb
-sudo apt install ./ivms4200-lite_1.0.0_amd64.deb
-ivms4200-lite
+sudo apt install ./easyview_1.0.0_amd64.deb
+easyview
 
 # rpm
-sudo dnf install ./ivms4200-lite-1.0.0-1.fc*.x86_64.rpm
-ivms4200-lite
+sudo dnf install ./easyview-1.0.0-1.fc*.x86_64.rpm
+easyview
 
 # AppImage
-chmod +x IVMS4200-Lite-1.0.0-x86_64.AppImage
-./IVMS4200-Lite-1.0.0-x86_64.AppImage
+chmod +x EasyVIEW-1.0.0-x86_64.AppImage
+./EasyVIEW-1.0.0-x86_64.AppImage
 ```
 
 **运行要求**：图形会话（X11 或 Wayland）、系统已安装 libvlc（视频解码内核）。
@@ -117,7 +117,7 @@ chmod +x IVMS4200-Lite-1.0.0-x86_64.AppImage
 
 若不依赖系统 VLC，可把 VLC 运行时放进 onedir 包的同目录 `vlc/` 子目录：
 
-- 把 `libvlc.so` 与 `plugins/` 放到 `dist/IVMS4200-Lite/vlc/`
+- 把 `libvlc.so` 与 `plugins/` 放到 `dist/EasyVIEW/vlc/`
 - `core/config.py` 会在启动 import vlc 前自动注入 `LD_LIBRARY_PATH` 与 `VLC_PLUGIN_PATH`
 
 > 注意：`.deb`/`.rpm` 的 `Depends/Requires` 已声明 libvlc，普通用户走系统 VLC 即可，
@@ -127,10 +127,10 @@ chmod +x IVMS4200-Lite-1.0.0-x86_64.AppImage
 
 ## 六、跨平台关键点（已写入 `core/config.py`）
 
-- 数据目录：Linux 落到 `$XDG_DATA_HOME` 或 `~/.local/share/IVMS4200-Lite`
+- 数据目录：Linux 落到 `$XDG_DATA_HOME` 或 `~/.local/share/EasyVIEW`
   （Windows 为 `%LOCALAPPDATA%`，macOS 为 `~/Library/Application Support`）。
 - VLC 定位：优先 exe 同目录 `vlc/`，回退系统已装 VLC（Linux 走动态链接器，Windows 走注册表）。
-- 凭据保险库：优先 OS 凭据库（Linux=SecretService/DBus），不可用时回退 `~/.ivms4200-lite/vault.key`。
+- 凭据保险库：优先 OS 凭据库（Linux=SecretService/DBus），不可用时回退 `~/.easyview/vault.key`。
 
 ---
 

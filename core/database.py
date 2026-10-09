@@ -1,6 +1,5 @@
 """SQLite 数据访问层：摄像机配置（含加密密码与 ONVIF 流地址）与录像索引。"""
 import sqlite3
-from pathlib import Path
 
 from core.config import DB_PATH
 
@@ -27,14 +26,23 @@ def init_db() -> None:
             vendor      TEXT DEFAULT 'hikvision',
             enabled     INTEGER DEFAULT 1,
             stream_uri  TEXT DEFAULT '',  -- ONVIF 取得的权威 RTSP（含鉴权）
+            protocol    TEXT DEFAULT 'rtsp',  -- 接入协议 rtsp/onvif/http
+            channels    INTEGER DEFAULT 1,     -- 设备通道数（NVR）
+            group_name  TEXT DEFAULT '',       -- 所属分组
             created_at  TEXT DEFAULT CURRENT_TIMESTAMP
         )
         """
     )
-    # 兼容旧库：补加 stream_uri 列
+    # 兼容旧库：补加 stream_uri / protocol / channels / group_name 列
     cols = [r[1] for r in conn.execute("PRAGMA table_info(cameras)")]
     if "stream_uri" not in cols:
         conn.execute("ALTER TABLE cameras ADD COLUMN stream_uri TEXT DEFAULT ''")
+    if "protocol" not in cols:
+        conn.execute("ALTER TABLE cameras ADD COLUMN protocol TEXT DEFAULT 'rtsp'")
+    if "channels" not in cols:
+        conn.execute("ALTER TABLE cameras ADD COLUMN channels INTEGER DEFAULT 1")
+    if "group_name" not in cols:
+        conn.execute("ALTER TABLE cameras ADD COLUMN group_name TEXT DEFAULT ''")
 
     conn.execute(
         """

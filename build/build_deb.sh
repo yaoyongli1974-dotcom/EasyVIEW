@@ -3,20 +3,20 @@
 # 由 PyInstaller onedir 包生成 Debian/Ubuntu (.deb) 安装包。
 # 前置：dpkg-deb（build-essential 或 dpkg-dev）
 # 用法：bash build/build_deb.sh
-# 产物：dist/ivms4200-lite_1.0.0_amd64.deb
+# 产物：dist/easyview_1.0.0_amd64.deb
 # ==============================================================================
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-APP_NAME="ivms4200-lite"
+APP_NAME="easyview"
 VERSION="1.0.0"
 ARCH="amd64"
 
-BUNDLE="$ROOT/dist/IVMS4200-Lite"
-if [ ! -x "$BUNDLE/IVMS4200-Lite" ]; then
-    echo "错误：未找到 PyInstaller 产物 $BUNDLE/IVMS4200-Lite，请先运行 build/build_linux.sh" >&2
+BUNDLE="$ROOT/dist/EasyVIEW"
+if [ ! -x "$BUNDLE/EasyVIEW" ]; then
+    echo "错误：未找到 PyInstaller 产物 $BUNDLE/EasyVIEW，请先运行 build/build_linux.sh" >&2
     exit 1
 fi
 
@@ -35,7 +35,7 @@ echo "==> 创建 /usr/bin 软链接"
 ln -s "/opt/$APP_NAME/$APP_NAME" "$STAGE/usr/bin/$APP_NAME"
 
 echo "==> 安装桌面入口与图标"
-cp "$ROOT/packaging/ivms4200-lite.desktop" "$STAGE/usr/share/applications/$APP_NAME.desktop"
+cp "$ROOT/packaging/easyview.desktop" "$STAGE/usr/share/applications/$APP_NAME.desktop"
 cp "$ROOT/packaging/icon.png" "$STAGE/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
 
 echo "==> 写入 Debian 控制文件"

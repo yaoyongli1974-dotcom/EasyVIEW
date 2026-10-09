@@ -6,14 +6,14 @@
   并通过 on_segment 回调写入回放索引（recordings 表）。
 - 单段（segment_seconds=0）：一次 start 对应一个文件，stop 时归档。
 """
-import os
 import threading
 import time
 from pathlib import Path
 
-import vlc
-
+# 先经 core.playback 触发 core.config 的 VLC 路径注入，再 import vlc
 from core.playback import add_recording
+
+import vlc
 
 
 class Recorder:
@@ -42,6 +42,7 @@ class Recorder:
     def _start_segment(self):
         path = self._segment_path()
         media = self.instance.media_new(self.camera.rtsp_url())
+        media.add_option("rtsp-tcp")
         # 仅写文件，不显示
         media.add_option(f"sout=#std{{access=file,mux=mp4,dst='{path}'}}")
         media.add_option("no-sout-rtp-sap")

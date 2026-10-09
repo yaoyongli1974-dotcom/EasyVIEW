@@ -51,6 +51,16 @@ def _probe_message() -> str:
 </s:Envelope>"""
 
 
+def _scope_value(scope: str) -> str:
+    """从 ONVIF scope URI 中取值。
+
+    兼容两种写法：
+      onvif://www.onvif.org/manufacturer/Hikvision   （以 / 分隔）
+      onvif://host/manufacturer:Hikvision            （以 : 分隔）
+    """
+    return scope.rstrip("/").replace(":", "/").split("/")[-1]
+
+
 def _parse_match(xml_bytes: bytes, src_addr: tuple) -> dict | None:
     try:
         root = ET.fromstring(xml_bytes)
@@ -84,9 +94,9 @@ def _parse_match(xml_bytes: bytes, src_addr: tuple) -> dict | None:
             for tok in scopes.text.split():
                 low = tok.lower()
                 if "manufacturer" in low:
-                    out["manufacturer"] = tok.rsplit(":", 1)[-1]
+                    out["manufacturer"] = _scope_value(tok)
                 elif "model" in low:
-                    out["model"] = tok.rsplit(":", 1)[-1]
+                    out["model"] = _scope_value(tok)
     return out
 
 

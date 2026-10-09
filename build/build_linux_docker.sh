@@ -9,7 +9,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-IMAGE="ivms4200-lite-builder"
+IMAGE="easyview-builder"
 OUT="$ROOT/out"
 mkdir -p "$OUT"
 

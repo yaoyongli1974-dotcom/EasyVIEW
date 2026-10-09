@@ -23,7 +23,7 @@ cd "$ROOT"
 TARGETS=("${@:-deb rpm appimage}")
 
 # 始终先确保 onedir 包存在
-if [ ! -x "$ROOT/dist/IVMS4200-Lite/IVMS4200-Lite" ]; then
+if [ ! -x "$ROOT/dist/EasyVIEW/EasyVIEW" ]; then
     echo "==> onedir 包缺失，先构建"
     bash "$ROOT/build/build_linux.sh"
 fi
