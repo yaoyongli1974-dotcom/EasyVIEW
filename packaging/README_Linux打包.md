@@ -45,7 +45,7 @@ bash build/build_linux_docker.sh   # 产物导出到 ./out
 ### 方式 C：GitHub Actions（推荐，含 Windows）
 推送 tag 即触发：
 ```bash
-git tag v0.1.1 && git push origin v0.1.1
+git tag v0.1.2 && git push origin v0.1.2
 ```
 工作流会构建 Windows（portable zip + Setup.exe）与 Linux（deb/rpm/AppImage/source）并创建 Release。
 
@@ -56,21 +56,21 @@ git tag v0.1.1 && git push origin v0.1.1
 | 格式 | 路径 | 说明 |
 |---|---|---|
 | onedir 包 | `dist/EasyVIEW/` | 主程序 + `_internal/`，可直接运行 |
-| `.deb` | `dist/easyview_0.1.1_amd64.deb` | 安装到 `/opt/easyview`，命令 `easyview` |
-| `.rpm` | `dist/easyview-0.1.1-1.<dist>.x86_64.rpm` | 同上 |
-| AppImage | `dist/easyview-0.1.1-x86_64.AppImage` | `chmod +x` 后直接运行 |
-| 源码包 | `dist/EasyVIEW-0.1.1-src.tar.gz` | 当前 HEAD 的 git 归档 |
+| `.deb` | `dist/easyview_0.1.2_amd64.deb` | 安装到 `/opt/easyview`，命令 `easyview` |
+| `.rpm` | `dist/easyview-0.1.2-1.<dist>.x86_64.rpm` | 同上 |
+| AppImage | `dist/easyview-0.1.2-x86_64.AppImage` | `chmod +x` 后直接运行 |
+| 源码包 | `dist/EasyVIEW-0.1.2-src.tar.gz` | 当前 HEAD 的 git 归档 |
 
 ---
 
 ## 四、安装与运行
 
 ```bash
-sudo apt install ./easyview_0.1.1_amd64.deb      # 或
-sudo dnf install ./easyview-0.1.1-1.*.x86_64.rpm
+sudo apt install ./easyview_0.1.2_amd64.deb      # 或
+sudo dnf install ./easyview-0.1.2-1.*.x86_64.rpm
 easyview
 
-chmod +x easyview-0.1.1-x86_64.AppImage && ./easyview-0.1.1-x86_64.AppImage
+chmod +x easyview-0.1.2-x86_64.AppImage && ./easyview-0.1.2-x86_64.AppImage
 ```
 
 **运行要求**：图形会话（X11 或 Wayland+XWayland）、系统已安装 libvlc。

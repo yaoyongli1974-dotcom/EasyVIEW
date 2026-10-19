@@ -11,7 +11,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 APP_NAME="easyview"
-VERSION="0.1.1"
+VERSION="0.1.2"
 
 BUNDLE="$ROOT/dist/EasyVIEW"
 if [ ! -x "$BUNDLE/EasyVIEW" ]; then

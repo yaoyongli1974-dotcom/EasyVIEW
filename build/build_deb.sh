@@ -3,7 +3,7 @@
 # 由 PyInstaller onedir 包生成 Debian/Ubuntu (.deb) 安装包。
 # 前置：dpkg-deb（build-essential 或 dpkg-dev）
 # 用法：bash build/build_deb.sh
-# 产物：dist/easyview_0.1.1_amd64.deb
+# 产物：dist/easyview_0.1.2_amd64.deb
 # ==============================================================================
 set -euo pipefail
 
@@ -12,7 +12,7 @@ cd "$ROOT"
 
 APP_NAME="easyview"
 BIN_NAME="EasyVIEW"
-VERSION="0.1.1"
+VERSION="0.1.2"
 ARCH="amd64"
 
 BUNDLE="$ROOT/dist/EasyVIEW"

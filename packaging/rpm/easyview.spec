@@ -1,7 +1,7 @@
 %global debug_package %{nil}
 
 Name:           easyview
-Version:        0.1.1
+Version:        0.1.2
 Release:        1%{?dist}
 Summary:        Lightweight RTSP/HTTP-HLS video surveillance preview client
 License:        MIT
@@ -45,5 +45,7 @@ cp %{SOURCE2} %{buildroot}/usr/share/icons/hicolor/256x256/apps/easyview.png
 /usr/share/icons/hicolor/256x256/apps/easyview.png
 
 %changelog
-* Fri Oct 09 2026 EasyVIEW Maintainers <maintainer@example.com> - 0.1.1-1
-- Minimal preview client release 0.1.1
+* Mon Oct 19 2026 EasyVIEW Maintainers <maintainer@example.com> - 0.1.2-1
+- Minimal preview client release 0.1.2
+- Fix Windows installer installing files into a nested EasyVIEW folder,
+  which left desktop/start-menu shortcuts pointing at a missing exe

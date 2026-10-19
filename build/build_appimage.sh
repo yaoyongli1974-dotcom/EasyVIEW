@@ -3,7 +3,7 @@
 # 由 PyInstaller onedir 包生成 AppImage（单文件、跨发行版可直接运行）。
 # 前置：appimagetool（AppImageKit）。脚本会自动下载到 build/ 目录（若未找到）。
 # 用法：bash build/build_appimage.sh
-# 产物：dist/EasyVIEW-0.1.1-x86_64.AppImage
+# 产物：dist/EasyVIEW-0.1.2-x86_64.AppImage
 # ==============================================================================
 set -euo pipefail
 
@@ -12,7 +12,7 @@ cd "$ROOT"
 
 APP_NAME="easyview"
 BIN_NAME="EasyVIEW"
-VERSION="0.1.1"
+VERSION="0.1.2"
 ARCH="x86_64"
 
 BUNDLE="$ROOT/dist/EasyVIEW"
