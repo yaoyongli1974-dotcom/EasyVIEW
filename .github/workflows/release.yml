@@ -102,6 +102,25 @@ jobs:
             throw "Setup.exe not produced"
           }
 
+      - name: Verify installer layout and shortcut target
+        shell: pwsh
+        run: |
+          $v = (Select-String -Path core/config.py -Pattern 'APP_VERSION = "(.+)"').Matches.Groups[1].Value
+          $setup = "dist/EasyVIEW-$v-Setup.exe"
+          $installDir = "$env:ProgramFiles\EasyVIEW"
+          Start-Process -FilePath $setup -ArgumentList "/S" -Wait
+          $exe = Join-Path $installDir "EasyVIEW.exe"
+          if (-not (Test-Path $exe)) {
+            Get-ChildItem -Recurse $installDir | Select-Object FullName
+            throw "Installer did not place EasyVIEW.exe at $exe"
+          }
+          $shell = New-Object -ComObject WScript.Shell
+          $lnk = Join-Path ([Environment]::GetFolderPath("Desktop")) "EasyVIEW.lnk"
+          if (-not (Test-Path $lnk)) { throw "Desktop shortcut not created" }
+          $target = $shell.CreateShortcut($lnk).TargetPath
+          if ($target -ne $exe) { throw "Shortcut target '$target' != '$exe'" }
+          Start-Process -FilePath (Join-Path $installDir "Uninstall.exe") -ArgumentList "/S" -Wait
+
       - name: Show artifacts
         run: Get-ChildItem dist
 
